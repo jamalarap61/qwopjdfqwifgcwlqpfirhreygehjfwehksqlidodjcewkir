@@ -1,6 +1,6 @@
 
 
---V18
+--V19
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
@@ -27,49 +27,66 @@ local Themes = {
     },
     LimitHub = {
         Name = "LimitHub",
-        Accent = Color3.fromRGB(75, 0, 130),
 
-        AcrylicMain = Color3.fromRGB(20, 20, 30),
-        AcrylicBorder = Color3.fromRGB(40, 40, 50),
-        AcrylicGradient = ColorSequence.new(Color3.fromRGB(40, 30, 60), Color3.fromRGB(20, 20, 40)),
+        -- ❄️ MAIN ACCENT (icy blue glow)
+        Accent = Color3.fromRGB(120, 200, 255),
+
+        -- 🧊 Acrylic / background (dark winter night)
+        AcrylicMain = Color3.fromRGB(15, 25, 40),
+        AcrylicBorder = Color3.fromRGB(40, 70, 100),
+        AcrylicGradient = ColorSequence.new(
+            Color3.fromRGB(40, 80, 120),
+            Color3.fromRGB(10, 20, 40)
+        ),
         AcrylicNoise = 0.8,
 
-        TitleBarLine = Color3.fromRGB(100, 90, 130),
-        Tab = Color3.fromRGB(100, 0, 200),
+        -- 🌨️ Top line / tab
+        TitleBarLine = Color3.fromRGB(140, 200, 255),
+        Tab = Color3.fromRGB(80, 160, 255),
 
-        Element = Color3.fromRGB(40, 30, 60),
-        ElementBorder = Color3.fromRGB(60, 60, 80),
-        InElementBorder = Color3.fromRGB(90, 90, 110),
-        ElementTransparency = 0.75,
+        -- 🧊 Elements
+        Element = Color3.fromRGB(25, 45, 70),
+        ElementBorder = Color3.fromRGB(60, 100, 140),
+        InElementBorder = Color3.fromRGB(100, 160, 200),
+        ElementTransparency = 0.65,
 
-        ToggleSlider = Color3.fromRGB(120, 0, 200),
-        ToggleToggled = Color3.fromRGB(255, 255, 255),
+        -- ❄️ Toggle
+        ToggleSlider = Color3.fromRGB(100, 180, 255),
+        ToggleToggled = Color3.fromRGB(220, 240, 255),
 
-        SliderRail = Color3.fromRGB(140, 140, 200),
+        -- 🧊 Slider
+        SliderRail = Color3.fromRGB(120, 180, 255),
 
-        DropdownFrame = Color3.fromRGB(30, 30, 50),
-        DropdownHolder = Color3.fromRGB(50, 50, 70),
-        DropdownBorder = Color3.fromRGB(90, 0, 170),
-        DropdownOption = Color3.fromRGB(120, 0, 220),
+        -- ❄️ Dropdown
+        DropdownFrame = Color3.fromRGB(20, 35, 55),
+        DropdownHolder = Color3.fromRGB(35, 55, 80),
+        DropdownBorder = Color3.fromRGB(100, 180, 255),
+        DropdownOption = Color3.fromRGB(80, 150, 220),
 
-        Keybind = Color3.fromRGB(110, 0, 200),
+        -- 🧊 Keybind
+        Keybind = Color3.fromRGB(90, 170, 255),
 
-        Input = Color3.fromRGB(200, 200, 230),
-        InputFocused = Color3.fromRGB(20, 20, 30),
-        InputIndicator = Color3.fromRGB(150, 100, 255),
+        -- ❄️ Input
+        Input = Color3.fromRGB(200, 230, 255),
+        InputFocused = Color3.fromRGB(15, 25, 40),
+        InputIndicator = Color3.fromRGB(120, 200, 255),
 
-        Dialog = Color3.fromRGB(30, 30, 50),
-        DialogHolder = Color3.fromRGB(45, 45, 65),
-        DialogHolderLine = Color3.fromRGB(120, 0, 200),
-        DialogButton = Color3.fromRGB(40, 40, 60),
-        DialogButtonBorder = Color3.fromRGB(100, 0, 190),
-        DialogBorder = Color3.fromRGB(80, 80, 100),
-        DialogInput = Color3.fromRGB(50, 50, 70),
-        DialogInputLine = Color3.fromRGB(120, 0, 200),
+        -- 🧊 Dialog
+        Dialog = Color3.fromRGB(20, 35, 55),
+        DialogHolder = Color3.fromRGB(35, 55, 80),
+        DialogHolderLine = Color3.fromRGB(120, 200, 255),
+        DialogButton = Color3.fromRGB(40, 70, 100),
+        DialogButtonBorder = Color3.fromRGB(120, 200, 255),
+        DialogBorder = Color3.fromRGB(80, 120, 160),
+        DialogInput = Color3.fromRGB(30, 50, 75),
+        DialogInputLine = Color3.fromRGB(120, 200, 255),
 
-        Text = Color3.fromRGB(230, 230, 255),
-        SubText = Color3.fromRGB(170, 170, 220),
-        Hover = Color3.fromRGB(140, 0, 230),
+        -- ❄️ Text
+        Text = Color3.fromRGB(220, 240, 255),
+        SubText = Color3.fromRGB(170, 210, 240),
+
+        -- ✨ Hover (icy glow effect)
+        Hover = Color3.fromRGB(140, 220, 255),
         HoverChange = 0.08
     }
 }
