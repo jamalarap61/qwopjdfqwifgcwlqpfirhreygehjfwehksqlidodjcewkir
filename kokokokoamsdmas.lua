@@ -1,6 +1,6 @@
 
 
---V19
+--V21
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
@@ -1399,7 +1399,7 @@ Components.Section = function(Title, Parent)
         AnchorPoint = Vector2.new(1, 0.5),
         BackgroundTransparency = 1,
         Image = getArrowIcon(true),
-        ImageColor3 = Color3.fromRGB(140, 0, 230),
+        ImageColor3 = Color3.fromRGB(140, 220, 255),
         ZIndex = 2,
         Name = "CollapseArrow"
     })
@@ -1436,7 +1436,7 @@ Components.Section = function(Title, Parent)
 
     Section.Root = Creator.New("Frame", {
         BackgroundTransparency = 0.05,
-        BackgroundColor3 = Color3.fromRGB(40, 30, 60),
+        BackgroundColor3 = Color3.fromRGB(25, 45, 70),
         Size = UDim2.new(1, 0, 0, 32),
         LayoutOrder = 7,
         Parent = Parent,
@@ -1449,7 +1449,7 @@ Components.Section = function(Title, Parent)
         }),
         Creator.New("UIStroke", {
             ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-            Color = Color3.fromRGB(90, 0, 170),
+            Color = Color3.fromRGB(120, 200, 255),
             Transparency = 0.4
         }),
         Section.Header,
