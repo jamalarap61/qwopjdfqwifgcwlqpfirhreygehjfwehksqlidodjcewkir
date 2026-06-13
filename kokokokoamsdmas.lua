@@ -1,6 +1,6 @@
 
 
---V21
+--V24
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
@@ -2787,7 +2787,7 @@ ElementsTable.Button = (function()
 			Position = UDim2.new(1, -10, 0.5, 0),
 			BackgroundTransparency = 1,
 			Parent = ButtonFrame.Frame,
-			ImageColor3 = Color3.fromRGB(140, 0, 230),
+			ImageColor3 = Color3.fromRGB(140, 220, 255),
 		})
 
 		Creator.AddSignal(ButtonFrame.Frame.MouseButton1Click, function()
