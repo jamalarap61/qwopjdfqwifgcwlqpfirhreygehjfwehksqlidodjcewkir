@@ -1,6 +1,6 @@
 
 
---V16
+--V18
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
@@ -131,7 +131,7 @@ local function CloseOpen()
 	Close_ImageButton.BorderColor3 = Color3.fromRGB(25, 25, 112)
 	Close_ImageButton.Position = UDim2.new(0.1021, 0, 0.0743, 0)
 	Close_ImageButton.Size = UDim2.new(0, 59, 0, 49)
-	Close_ImageButton.Image = "rbxassetid://88478059953821" --98235895490170 | 123767073052336 | 102794753447548
+	Close_ImageButton.Image = "rbxassetid://97402224075138" --98235895490170 | 123767073052336 | 102794753447548
 	Close_ImageButton.Visible = false
 
 	UICorner.Name = "MainCorner"
