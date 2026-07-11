@@ -1,6 +1,6 @@
 
 
---V25
+--V26
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
@@ -1238,6 +1238,7 @@ Components.Element = (function()
 			TextColor3 = Color3.fromRGB(240, 240, 240),
 			TextSize = 13,
 			TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			Size = UDim2.new(1, 0, 0, 14),
 			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			BackgroundTransparency = 1,
@@ -2815,6 +2816,7 @@ ElementsTable.Toggle = (function()
 
 		local ToggleFrame = Components.Element(Config.Title, Config.Description, self.Container, true, Config)
 		ToggleFrame.DescLabel.Size = UDim2.new(1, -54, 0, 14)
+		ToggleFrame.TitleLabel.Size = UDim2.new(1, -54, 0, 14)
 
 		Toggle.SetTitle = ToggleFrame.SetTitle
 		Toggle.SetDesc = ToggleFrame.SetDesc
@@ -2934,6 +2936,7 @@ ElementsTable.Dropdown = (function()
 
 		local DropdownFrame = Components.Element(Config.Title, Config.Description, self.Container, false, Config)
 		DropdownFrame.DescLabel.Size = UDim2.new(1, -170, 0, 14)
+		DropdownFrame.TitleLabel.Size = UDim2.new(1, -170, 0, 14)
 
 		Dropdown.SetTitle = DropdownFrame.SetTitle
 		Dropdown.SetDesc = DropdownFrame.SetDesc
@@ -3068,12 +3071,18 @@ ElementsTable.Dropdown = (function()
                 DropdownScrollFrame.CanvasPosition = Vector2.new(0, 0)
             end
 
-            -- Ensure filter updates when typing in SearchBar (attach after creation)
-            if Dropdown and Dropdown.SearchBar then
-                Dropdown.SearchBar:GetPropertyChangedSignal("Text"):Connect(applyFilter)
+            -- Ensure filter updates when typing in SearchBar (attach after creation) with a fast 0.1s debounce to prevent UI lag
+            local searchThread
+            local function applyFilterDebounced()
+                if searchThread then
+                    task.cancel(searchThread)
+                end
+                searchThread = task.delay(0.1, applyFilter)
             end
 
-            Dropdown.SearchBar:GetPropertyChangedSignal("Text"):Connect(applyFilter)
+            if Dropdown and Dropdown.SearchBar then
+                Dropdown.SearchBar:GetPropertyChangedSignal("Text"):Connect(applyFilterDebounced)
+            end
     		local DropdownHolderFrame = New("Frame", {
 			Size = UDim2.fromScale(1, 0.6),
 			ThemeTag = {
@@ -3532,7 +3541,8 @@ ElementsTable.Slider = (function()
 		local Dragging = false
 
 		local SliderFrame = Components.Element(Config.Title, Config.Description, self.Container, false, Config)
-		SliderFrame.DescLabel.Size = UDim2.new(1, -170, 0, 14)
+		SliderFrame.DescLabel.Size = UDim2.new(1, -275, 0, 14)
+		SliderFrame.TitleLabel.Size = UDim2.new(1, -275, 0, 14)
 
 		Slider.Elements = SliderFrame
 		Slider.SetTitle = SliderFrame.SetTitle
@@ -3688,6 +3698,8 @@ ElementsTable.Keybind = (function()
 		local Picking = false
 
 		local KeybindFrame = Components.Element(Config.Title, Config.Description, self.Container, true)
+		KeybindFrame.DescLabel.Size = UDim2.new(1, -100, 0, 14)
+		KeybindFrame.TitleLabel.Size = UDim2.new(1, -100, 0, 14)
 
 		Keybind.SetTitle = KeybindFrame.SetTitle
 		Keybind.SetDesc = KeybindFrame.SetDesc
@@ -3894,6 +3906,8 @@ ElementsTable.Colorpicker = (function()
 		Colorpicker:SetHSVFromRGB(Colorpicker.Value)
 
 		local ColorpickerFrame = Components.Element(Config.Title, Config.Description, self.Container, true)
+		ColorpickerFrame.DescLabel.Size = UDim2.new(1, -46, 0, 14)
+		ColorpickerFrame.TitleLabel.Size = UDim2.new(1, -46, 0, 14)
 
 		Colorpicker.SetTitle = ColorpickerFrame.SetTitle
 		Colorpicker.SetDesc = ColorpickerFrame.SetDesc
@@ -4387,6 +4401,8 @@ ElementsTable.Input = (function()
 		}
 
 		local InputFrame = Components.Element(Config.Title, Config.Description, self.Container, false)
+		InputFrame.DescLabel.Size = UDim2.new(1, -170, 0, 14)
+		InputFrame.TitleLabel.Size = UDim2.new(1, -170, 0, 14)
 
 		Input.SetTitle = InputFrame.SetTitle
 		Input.SetDesc = InputFrame.SetDesc
@@ -5338,7 +5354,7 @@ local SaveManager = {} do
 			end,
 			Load = function(idx, data)
 				if SaveManager.Options[idx] then 
-					SaveManager.Options[idx]:SetValue(data.value)
+					SaveManager.Options[idx]:SetValue(data.value, true)
 				end
 			end,
 		},
@@ -5389,7 +5405,7 @@ local SaveManager = {} do
 			end,
 			Load = function(idx, data)
 				if SaveManager.Options[idx] and type(data.text) == "string" then
-					SaveManager.Options[idx]:SetValue(data.text)
+					SaveManager.Options[idx]:SetValue(data.text, true)
 				end
 			end,
 		},
@@ -5436,70 +5452,87 @@ local SaveManager = {} do
 	
     function SaveManager:Load(name)
 		if (not name) then
-    return false, "no config file is selected"
-end
+			return false, "no config file is selected"
+		end
 
-local file = name
-if not isfile(file) then return false, "Create Config Save File" end
+		local file = name
+		if not isfile(file) then return false, "Create Config Save File" end
 
-local ok, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
-if not ok then return false, "decode error" end
+		local ok, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
+		if not ok then return false, "decode error" end
 
-Library._isLoading = true
+		Library._isLoading = true
 
-local Options = self.Options
-local Parser = self.Parser
-local Ignore = self.Ignore
-local objects = decoded.objects
-if type(objects) ~= "table" then
-    Library._isLoading = false
-    return false, "invalid config format"
-end
+		local Options = self.Options
+		local Parser = self.Parser
+		local Ignore = self.Ignore
+		local objects = decoded.objects
+		if type(objects) ~= "table" then
+			Library._isLoading = false
+			return false, "invalid config format"
+		end
 
-for i = 1, #objects do
-    local o = objects[i]
-    local idx = o.idx
-    if idx and not Ignore[idx] then
-        local opt = Options[idx]
-        if opt then
-            -- Cheap equality skip for common types
-            if o.type == "Toggle" then
-                if opt.Value ~= o.value then opt:SetValue(o.value) end
-            elseif o.type == "Slider" then
-                if tostring(opt.Value) ~= tostring(o.value) then opt:SetValue(o.value, true) end
-            elseif o.type == "Input" then
-                if tostring(opt.Value or "") ~= tostring(o.text or "") then opt:SetValue(o.text, true) end
-            elseif o.type == "Dropdown" then
-                -- Always apply; heavy work is deferred and no list build is queued when deferring
-                opt:SetValue(o.value, true)
-            elseif o.type == "Colorpicker" then
-                opt:SetValueRGB(Color3.fromHex(o.value), o.transparency, true)
-            elseif Parser[o.type] then
-                -- Fallback to existing parser for other/unknown types
-                Parser[o.type].Load(idx, o, true)
-            end
-        else
-            local p = Parser[o.type]
-            if p then p.Load(idx, o, true) end
-        end
-    end
-end
+		-- PASS 1: Load non-toggle objects silently first
+		for i = 1, #objects do
+			local o = objects[i]
+			local idx = o.idx
+			if idx and not Ignore[idx] and o.type ~= "Toggle" then
+				local opt = Options[idx]
+				if opt then
+					if o.type == "Slider" then
+						if tostring(opt.Value) ~= tostring(o.value) then opt:SetValue(o.value, true) end
+					elseif o.type == "Input" then
+						if tostring(opt.Value or "") ~= tostring(o.text or "") then opt:SetValue(o.text, true) end
+					elseif o.type == "Dropdown" then
+						opt:SetValue(o.value, true)
+					elseif o.type == "Colorpicker" then
+						opt:SetValueRGB(Color3.fromHex(o.value), o.transparency, true)
+					elseif Parser[o.type] then
+						Parser[o.type].Load(idx, o)
+					end
+				else
+					local p = Parser[o.type]
+					if p then p.Load(idx, o) end
+				end
+			end
+		end
 
--- Call callbacks after load for each widget (this should include dropdowns, etc.)
-for idx, opt in pairs(Options) do
-    if opt and opt.OnChanged then
-        opt:OnChanged(opt.Callback)
-    end
-end
+		-- PASS 2: Load toggles silently last
+		for i = 1, #objects do
+			local o = objects[i]
+			local idx = o.idx
+			if idx and not Ignore[idx] and o.type == "Toggle" then
+				local opt = Options[idx]
+				if opt then
+					if opt.Value ~= o.value then opt:SetValue(o.value, true) end
+				else
+					local p = Parser[o.type]
+					if p then p.Load(idx, o) end
+				end
+			end
+		end
 
-Library._isLoading = false
+		-- PASS 3: Call callbacks for non-toggles first
+		for idx, opt in pairs(Options) do
+			if opt and opt.Type ~= "Toggle" and opt.OnChanged then
+				opt:OnChanged(opt.Callback)
+			end
+		end
 
-if Library._postLoadRebuild then
-    pcall(function() Library:_postLoadRebuild() end)
-end
+		-- PASS 4: Call callbacks for toggles last
+		for idx, opt in pairs(Options) do
+			if opt and opt.Type == "Toggle" and opt.OnChanged then
+				opt:OnChanged(opt.Callback)
+			end
+		end
 
-return true
+		Library._isLoading = false
 
+		if Library._postLoadRebuild then
+			pcall(function() Library:_postLoadRebuild() end)
+		end
+
+		return true
 	end
 
 
