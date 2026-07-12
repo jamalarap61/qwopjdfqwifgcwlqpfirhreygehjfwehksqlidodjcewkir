@@ -1,4 +1,4 @@
---V19
+--V20
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -1681,7 +1681,7 @@ function ZeroImpact:Window(GuiConfig)
                             SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                         end
                     end
-                    if instant then
+                    if instant == true then
                         if FeatureFrame and FeatureFrame.Parent then
                             FeatureFrame.Rotation = 90
                         end
@@ -1702,7 +1702,7 @@ function ZeroImpact:Window(GuiConfig)
                         end)
                     end
                 else
-                    if instant then
+                    if instant == true then
                         if FeatureFrame and FeatureFrame.Parent then
                             FeatureFrame.Rotation = 0
                         end
