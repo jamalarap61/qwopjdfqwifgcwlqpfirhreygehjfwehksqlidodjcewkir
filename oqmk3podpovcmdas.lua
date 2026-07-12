@@ -1,4 +1,13 @@
---V15
+--V16
+
+local isfolder = isfolder or function() return false end
+local makefolder = makefolder or function() end
+local isfile = isfile or function() return false end
+local readfile = readfile or function() return "" end
+local writefile = writefile or function() end
+local delfile = delfile or function() end
+local listfiles = listfiles or function() return {} end
+local getgenv = getgenv or function() return _G end
 
 local HttpService = game:GetService("HttpService")
 
