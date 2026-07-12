@@ -1,4 +1,4 @@
---V16
+--V17
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -27,6 +27,7 @@ local ConfigFile = "ZeroImpact/Config/ZeroImpact_" .. gameName .. ".json"
 ConfigData       = {}
 Elements         = {}
 CURRENT_VERSION  = nil
+local SearchableItems = {}
 
 function SaveConfig()
     if _G.ZeroImpactAutoSave == false then return end
@@ -563,6 +564,7 @@ function notif(msg, delay, color, title, desc, icon)
 end
 
 function ZeroImpact:Window(GuiConfig)
+    local UpdateSize1
     GuiConfig              = GuiConfig or {}
     GuiConfig.Title        = GuiConfig.Title or "ZeroImpact"
     GuiConfig.Footer       = GuiConfig.Footer or "ZeroImpact >:D"
@@ -612,7 +614,7 @@ function ZeroImpact:Window(GuiConfig)
     local FullScreen = Instance.new("TextButton")
     local ImageLabel3 = Instance.new("ImageLabel")
     local LayersTab = Instance.new("Frame");
-    local AccountTab = Instance.new("Frame");
+
     local UICorner2 = Instance.new("UICorner");
     local UICorner3 = Instance.new("UICorner")
     local DecideFrame = Instance.new("Frame");
@@ -806,77 +808,106 @@ function ZeroImpact:Window(GuiConfig)
     LayersTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     LayersTab.BorderSizePixel = 0
     LayersTab.Position = UDim2.new(0, 9, 0, 50)
-    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -95)
+    LayersTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 1, -59)
     LayersTab.Name = "LayersTab"
     LayersTab.Parent = Main
 
-	AccountTab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    AccountTab.BackgroundTransparency = 0.9350000023841858
-    AccountTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
-    AccountTab.BorderSizePixel = 0
-    AccountTab.Position = UDim2.new(0, 9, 1, -45)
-    AccountTab.Size = UDim2.new(0, GuiConfig["Tab Width"], 0, 35)
-    AccountTab.Name = "AccountTab"
-    AccountTab.Parent = Main
+    local SearchFrame = Instance.new("Frame")
+    SearchFrame.Name = "SearchFrame"
+    SearchFrame.Parent = LayersTab
+    SearchFrame.Position = UDim2.new(0, 0, 0, 0)
+    SearchFrame.Size = UDim2.new(1, 0, 0, 26)
+    SearchFrame.BackgroundColor3 = Color3.fromRGB(15, 22, 33)
+    SearchFrame.BackgroundTransparency = 0.5
+    SearchFrame.BorderSizePixel = 0
 
-    UICorner.CornerRadius = UDim.new(0, 6)
-    UICorner.Parent = AccountTab
+    local SearchCorner = Instance.new("UICorner")
+    SearchCorner.CornerRadius = UDim.new(0, 6)
+    SearchCorner.Parent = SearchFrame
 
-    local AvatarCircle = Instance.new("Frame")
-    AvatarCircle.Size = UDim2.new(0, 26, 0, 26)
-    AvatarCircle.Position = UDim2.new(0, 5, 0.5, -13)
-    AvatarCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    AvatarCircle.BackgroundTransparency = 1
-    AvatarCircle.BorderSizePixel = 0
-    AvatarCircle.ClipsDescendants = true  -- bikin bulat
-    AvatarCircle.Name = "AvatarCircle"
-    AvatarCircle.Parent = AccountTab
+    local SearchStroke = Instance.new("UIStroke")
+    SearchStroke.Color = Color3.fromRGB(255, 255, 255)
+    SearchStroke.Transparency = 0.85
+    SearchStroke.Thickness = 1
+    SearchStroke.Parent = SearchFrame
 
-    local AvatarCorner = Instance.new("UICorner")
-    AvatarCorner.CornerRadius = UDim.new(1, 0)  -- full bulat
-    AvatarCorner.Parent = AvatarCircle
+    local SearchInput = Instance.new("TextBox")
+    SearchInput.Name = "SearchInput"
+    SearchInput.Parent = SearchFrame
+    SearchInput.Size = UDim2.new(1, -20, 1, 0)
+    SearchInput.Position = UDim2.new(0, 10, 0, 0)
+    SearchInput.BackgroundTransparency = 1
+    SearchInput.BorderSizePixel = 0
+    SearchInput.Text = ""
+    SearchInput.PlaceholderText = "Search..."
+    SearchInput.PlaceholderColor3 = Color3.fromRGB(120, 140, 160)
+    SearchInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    SearchInput.Font = Enum.Font.Gotham
+    SearchInput.TextSize = 11
+    SearchInput.TextXAlignment = Enum.TextXAlignment.Left
 
-    local AvatarImg = Instance.new("ImageLabel")
-    AvatarImg.Size = UDim2.new(1, 0, 1, 0)
-    AvatarImg.BackgroundTransparency = 1
-    AvatarImg.BorderSizePixel = 0
-    AvatarImg.Name = "AvatarImg"
-    AvatarImg.Parent = AvatarCircle
+    SearchInput.Focused:Connect(function()
+        TweenService:Create(SearchStroke, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0.3 }):Play()
+    end)
+    SearchInput.FocusLost:Connect(function()
+        TweenService:Create(SearchStroke, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.85 }):Play()
+    end)
 
-    -- Nama player di sebelah kanan avatar
-    local AccountName = Instance.new("TextLabel")
-    AccountName.Font = Enum.Font.GothamBold
-    -- AccountName.Text = game:GetService("Players").LocalPlayer.Name
-    AccountName.TextSize = 11
-    AccountName.TextColor3 = Color3.fromRGB(231, 231, 231)
-    AccountName.TextXAlignment = Enum.TextXAlignment.Left
-    AccountName.BackgroundTransparency = 1
-    AccountName.Position = UDim2.new(0, 36, 0, 0)
-    AccountName.Size = UDim2.new(1, -40, 1, 0)
-    AccountName.TextTruncate = Enum.TextTruncate.AtEnd  -- potong kalau kepanjangan
-    AccountName.Parent = AccountTab
-
-    local playerName = game:GetService("Players").LocalPlayer.Name
-
-    local visible = string.sub(playerName, 1, 4)
-    local hiddenLength = #playerName - 4
-
-    if hiddenLength > 0 then
-        AccountName.Text = visible .. string.rep("*", hiddenLength)
-    else
-        AccountName.Text = playerName
-    end
-
-    -- Ambil foto avatar
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    spawn(function()
-        local url, _ = Players:GetUserThumbnailAsync(
-            LocalPlayer.UserId,
-            Enum.ThumbnailType.HeadShot,
-            Enum.ThumbnailSize.Size420x420
-        )
-        AvatarImg.Image = url
+    SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
+        local query = SearchInput.Text:lower():gsub("%s+", "")
+        
+        if query == "" then
+            for _, tabData in ipairs(SearchableItems) do
+                tabData.TabFrame.Visible = true
+                for _, sectionData in ipairs(tabData.Sections) do
+                    sectionData.SectionFrame.Visible = true
+                    for _, itemData in ipairs(sectionData.Items) do
+                        itemData.Frame.Visible = true
+                    end
+                    sectionData.UpdateSize()
+                end
+                tabData.UpdateScroll()
+            end
+            UpdateSize1()
+            return
+        end
+        
+        for _, tabData in ipairs(SearchableItems) do
+            local tabMatches = tabData.TabName:lower():find(query) ~= nil
+            local anySectionMatches = false
+            
+            for _, sectionData in ipairs(tabData.Sections) do
+                local sectionMatches = sectionData.SectionTitle:lower():find(query) ~= nil
+                local anyItemMatches = false
+                
+                for _, itemData in ipairs(sectionData.Items) do
+                    local itemMatches = itemData.Title:lower():find(query) ~= nil
+                    
+                    if itemMatches or sectionMatches or tabMatches then
+                        itemData.Frame.Visible = true
+                        anyItemMatches = true
+                    else
+                        itemData.Frame.Visible = false
+                    end
+                end
+                
+                if anyItemMatches or sectionMatches or tabMatches then
+                    sectionData.SectionFrame.Visible = true
+                    anySectionMatches = true
+                else
+                    sectionData.SectionFrame.Visible = false
+                end
+                sectionData.UpdateSize()
+            end
+            
+            if tabMatches or anySectionMatches then
+                tabData.TabFrame.Visible = true
+            else
+                tabData.TabFrame.Visible = false
+            end
+            tabData.UpdateScroll()
+        end
+        UpdateSize1()
     end)
 
     UICorner2.CornerRadius = UDim.new(0, 2)
@@ -974,7 +1005,8 @@ function ZeroImpact:Window(GuiConfig)
     ScrollTab.BackgroundTransparency = 0.9990000128746033
     ScrollTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
     ScrollTab.BorderSizePixel = 0
-    ScrollTab.Size = UDim2.new(1, 0, 1, 0)
+    ScrollTab.Size = UDim2.new(1, 0, 1, -32)
+    ScrollTab.Position = UDim2.new(0, 0, 0, 32)
     ScrollTab.Name = "ScrollTab"
     ScrollTab.Parent = LayersTab
 
@@ -982,10 +1014,10 @@ function ZeroImpact:Window(GuiConfig)
     UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     UIListLayout.Parent = ScrollTab
 
-    local function UpdateSize1()
+    UpdateSize1 = function()
         local OffsetY = 0
         for _, child in ScrollTab:GetChildren() do
-            if child.Name ~= "UIListLayout" then
+            if not child:IsA("UIListLayout") and child.Visible then
                 OffsetY = OffsetY + 3 + child.Size.Y.Offset
             end
         end
@@ -1339,6 +1371,16 @@ function ZeroImpact:Window(GuiConfig)
         local ScrolLayers = Instance.new("ScrollingFrame");
         local UIListLayout1 = Instance.new("UIListLayout");
 
+        local function UpdateScrollSize()
+            local OffsetY = 0
+            for _, child in ScrolLayers:GetChildren() do
+                if not child:IsA("UIListLayout") and child.Visible then
+                    OffsetY = OffsetY + 3 + child.Size.Y.Offset
+                end
+            end
+            ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+        end
+
         ScrolLayers.ScrollBarImageColor3 = Color3.fromRGB(80.00000283122063, 80.00000283122063, 80.00000283122063)
         ScrolLayers.ScrollBarThickness = 0
         ScrolLayers.Active = true
@@ -1361,6 +1403,14 @@ function ZeroImpact:Window(GuiConfig)
         local TabName = Instance.new("TextLabel")
         local UIStroke2 = Instance.new("UIStroke");
         local UICorner4 = Instance.new("UICorner");
+
+        local myTabData = {
+            TabFrame = Tab,
+            TabName = TabConfig.Name:gsub("^%s*|%s*", ""),
+            Sections = {},
+            UpdateScroll = UpdateScrollSize
+        }
+        table.insert(SearchableItems, myTabData)
 
         Tab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         if CountTab == 0 then
@@ -1611,20 +1661,14 @@ function ZeroImpact:Window(GuiConfig)
             local OpenSection = false
 
             local function UpdateSizeScroll()
-                local OffsetY = 0
-                for _, child in ScrolLayers:GetChildren() do
-                    if child.Name ~= "UIListLayout" then
-                        OffsetY = OffsetY + 3 + child.Size.Y.Offset
-                    end
-                end
-                ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+                UpdateScrollSize()
             end
 
             local function UpdateSizeSection()
                 if OpenSection then
                     local SectionSizeYWitdh = 38
                     for _, v in SectionAdd:GetChildren() do
-                        if v.Name ~= "UIListLayout" and v.Name ~= "UICorner" then
+                        if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
                             SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                         end
                     end
@@ -1634,9 +1678,17 @@ function ZeroImpact:Window(GuiConfig)
                     TweenService:Create(SectionAdd, TweenInfo.new(0.5),
                         { Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38) }):Play()
                     task.wait(0.5)
-                    UpdateSizeScroll()
+                    UpdateScrollSize()
                 end
             end
+
+            local mySectionData = {
+                SectionFrame = Section,
+                SectionTitle = Title,
+                Items = {},
+                UpdateSize = UpdateSizeSection
+            }
+            table.insert(myTabData.Sections, mySectionData)
 
             if AlwaysOpen == true then
                 SectionButton:Destroy()
@@ -1658,7 +1710,7 @@ function ZeroImpact:Window(GuiConfig)
                         TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
                         OpenSection = false
                         task.wait(0.5)
-                        UpdateSizeScroll()
+                        UpdateScrollSize()
                     else
                         OpenSection = true
                         UpdateSizeSection()
@@ -1670,14 +1722,14 @@ function ZeroImpact:Window(GuiConfig)
                 OpenSection = true
                 local SectionSizeYWitdh = 38
                 for _, v in SectionAdd:GetChildren() do
-                    if v.Name ~= "UIListLayout" and v.Name ~= "UICorner" then
+                    if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
                         SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                     end
                 end
                 FeatureFrame.Rotation = 90
                 Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
                 SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
-                UpdateSizeScroll()
+                UpdateScrollSize()
             end
 
             SectionAdd.ChildAdded:Connect(UpdateSizeSection)
@@ -1700,6 +1752,8 @@ function ZeroImpact:Window(GuiConfig)
                 local ParagraphFunc = {}
 
                 local Paragraph = Instance.new("Frame")
+                table.insert(mySectionData.Items, { Frame = Paragraph, Title = ParagraphConfig.Title })
+
                 local UICorner14 = Instance.new("UICorner")
                 local ParagraphTitle = Instance.new("TextLabel")
                 local ParagraphContent = Instance.new("TextLabel")
@@ -1973,6 +2027,7 @@ function ZeroImpact:Window(GuiConfig)
                 ButtonConfig.SubCallback = ButtonConfig.SubCallback or function() end
 
                 local Button = Instance.new("Frame")
+                table.insert(mySectionData.Items, { Frame = Button, Title = ButtonConfig.Title })
                 Button.BackgroundColor3 = Color3.fromRGB(20, 28, 40)
                 Button.BackgroundTransparency = 1
                 Button.Size = UDim2.new(1, 0, 0, 40)
@@ -2102,6 +2157,7 @@ function ZeroImpact:Window(GuiConfig)
                 local ToggleFunc = { Value = ToggleConfig.Default }
 
                 local Toggle = Instance.new("Frame")
+                table.insert(mySectionData.Items, { Frame = Toggle, Title = ToggleConfig.Title })
                 local UICorner20 = Instance.new("UICorner")
                 local ToggleTitle = Instance.new("TextLabel")
                 local ToggleContent = Instance.new("TextLabel")
@@ -2279,6 +2335,7 @@ function ZeroImpact:Window(GuiConfig)
                 local SliderFunc = { Value = SliderConfig.Default }
 
                 local Slider = Instance.new("Frame");
+                table.insert(mySectionData.Items, { Frame = Slider, Title = SliderConfig.Title })
                 local UICorner15 = Instance.new("UICorner");
                 local SliderTitle = Instance.new("TextLabel");
                 local SliderContent = Instance.new("TextLabel");
@@ -2508,6 +2565,7 @@ function ZeroImpact:Window(GuiConfig)
                 local InputFunc = { Value = InputConfig.Default }
 
                 local Input = Instance.new("Frame");
+                table.insert(mySectionData.Items, { Frame = Input, Title = InputConfig.Title })
                 local UICorner12 = Instance.new("UICorner");
                 local InputTitle = Instance.new("TextLabel");
                 local InputContent = Instance.new("TextLabel");
@@ -2640,6 +2698,7 @@ function ZeroImpact:Window(GuiConfig)
                 local DropdownFunc = { Value = DropdownConfig.Default, Options = DropdownConfig.Options }
 
                 local Dropdown = Instance.new("Frame")
+                table.insert(mySectionData.Items, { Frame = Dropdown, Title = DropdownConfig.Title })
                 local DropdownButton = Instance.new("TextButton")
                 local UICorner10 = Instance.new("UICorner")
                 local DropdownTitle = Instance.new("TextLabel")
