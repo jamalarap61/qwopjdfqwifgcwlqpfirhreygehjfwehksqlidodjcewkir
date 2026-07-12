@@ -1,4 +1,4 @@
---V2
+--V3
 
 local HttpService = game:GetService("HttpService")
 
@@ -525,7 +525,7 @@ function ZeroImpact:Window(GuiConfig)
     GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(0, 180, 255)
     GuiConfig.Color2       = GuiConfig.Color2 or Color3.fromRGB(150, 150, 150)
     GuiConfig.Image        = GuiConfig.Image or "76536228337525"
-    GuiConfig.LogoHUB      = GuiConfig.LogoHUB or "76536228337525"
+    GuiConfig.LogoHUB      = GuiConfig.LogoHUB or ""
     GuiConfig.WindowIMG    = GuiConfig.WindowIMG or ""
     GuiConfig["Tab Width"] = GuiConfig["Tab Width"] or 120
     GuiConfig.Version      = GuiConfig.Version or 1
