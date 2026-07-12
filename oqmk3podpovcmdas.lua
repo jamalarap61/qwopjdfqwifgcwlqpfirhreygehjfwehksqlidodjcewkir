@@ -1,4 +1,4 @@
---V 7
+--V8
 
 local HttpService = game:GetService("HttpService")
 
@@ -546,9 +546,9 @@ function ZeroImpact:Window(GuiConfig)
 
     if GuiConfig.ConfigPath then
         ConfigFile = GuiConfig.ConfigPath
-        local path = ""
+        local fileName = ConfigFile:match("[^/\\]+$") or ""
         for part in ConfigFile:gmatch("[^/\\]+") do
-            if not ConfigFile:find(part .. "$", 1, true) then
+            if part ~= fileName then
                 path = (path == "") and part or (path .. "/" .. part)
                 if not isfolder(path) then
                     makefolder(path)
