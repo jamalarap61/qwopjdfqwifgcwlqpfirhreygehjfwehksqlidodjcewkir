@@ -1,4 +1,4 @@
---V5
+--V6
 
 local HttpService = game:GetService("HttpService")
 
@@ -389,7 +389,14 @@ function ZeroImpact:MakeNotify(NotifyConfig)
         DropShadowHolder.Parent = NotifyFrameReal
 
         local NotifIcon = Instance.new("ImageLabel")
-        NotifIcon.Image = "rbxassetid://" .. NotifyConfig.Icon
+        local resolvedIcon = Icons[NotifyConfig.Icon] or NotifyConfig.Icon
+        if resolvedIcon ~= "" then
+            if not tostring(resolvedIcon):find("://") then
+                NotifIcon.Image = "rbxassetid://" .. resolvedIcon
+            else
+                NotifIcon.Image = resolvedIcon
+            end
+        end
         NotifIcon.BackgroundTransparency = 1
         NotifIcon.ImageTransparency = 0
         NotifIcon.BorderSizePixel = 0
@@ -514,13 +521,14 @@ function ZeroImpact:MakeNotify(NotifyConfig)
     return NotifyFunction
 end
 
-function notif(msg, delay, color, title, desc)
+function notif(msg, delay, color, title, desc, icon)
     return ZeroImpact:MakeNotify({
         Title = title or "ZeroImpact",
         Description = desc or "Notification",
         Content = msg or "Content",
         Color = color or Color3.fromRGB(130, 220, 255),
-        Delay = delay or 4
+        Delay = delay or 4,
+        Icon = icon
     })
 end
 
