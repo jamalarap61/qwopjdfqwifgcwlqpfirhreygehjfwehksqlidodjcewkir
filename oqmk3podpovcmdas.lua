@@ -1,4 +1,4 @@
---V6
+--V 7
 
 local HttpService = game:GetService("HttpService")
 
@@ -150,7 +150,7 @@ local function safeSize(pxWidth, pxHeight)
     return UDim2.new(scaleX, 0, scaleY, 0)
 end
 
-local function MakeDraggable(topbarobject, object)
+local function MakeDraggable(topbarobject, object, GuiConfig)
     local function CustomPos(topbarobject, object)
         local Dragging, DragInput, DragStart, StartPosition
 
@@ -192,7 +192,7 @@ local function MakeDraggable(topbarobject, object)
         end)
     end
 
-    local function CustomSize(object)
+    local function CustomSize(object, GuiConfig)
         local Dragging, DragInput, DragStart, StartSize
 
         local minSizeX, minSizeY
@@ -260,7 +260,7 @@ local function MakeDraggable(topbarobject, object)
         end)
     end
 
-    CustomSize(object)
+    CustomSize(object, GuiConfig)
     CustomPos(topbarobject, object)
 end
 
@@ -1157,7 +1157,7 @@ function ZeroImpact:Window(GuiConfig)
     GuiFunc:ToggleUI()
 
     DropShadowHolder.Size = UDim2.new(0, 115 + TextLabel.TextBounds.X + 1 + TextLabel1.TextBounds.X, 0, 350)
-    MakeDraggable(Top, DropShadowHolder)
+    MakeDraggable(Top, DropShadowHolder, GuiConfig)
     local isFullscreen = false
     local originalSize = DropShadowHolder.Size
     local originalPos  = DropShadowHolder.Position
