@@ -1,4 +1,4 @@
---V8
+--V9
 
 local HttpService = game:GetService("HttpService")
 
@@ -547,6 +547,7 @@ function ZeroImpact:Window(GuiConfig)
     if GuiConfig.ConfigPath then
         ConfigFile = GuiConfig.ConfigPath
         local fileName = ConfigFile:match("[^/\\]+$") or ""
+        local path = ""
         for part in ConfigFile:gmatch("[^/\\]+") do
             if part ~= fileName then
                 path = (path == "") and part or (path .. "/" .. part)
