@@ -1,4 +1,4 @@
---V3
+--V4
 
 local HttpService = game:GetService("HttpService")
 
@@ -1351,8 +1351,29 @@ function ZeroImpact:Window(GuiConfig)
         TabName.BackgroundTransparency = 0.9990000128746033
         TabName.BorderColor3 = Color3.fromRGB(0, 0, 0)
         TabName.BorderSizePixel = 0
-        TabName.Size = UDim2.new(1, 0, 1, 0)
-        TabName.Position = UDim2.new(0, 8, 0, 0)
+        TabName.Size = UDim2.new(1, -30, 1, 0)
+
+        local textOffset = 8
+        if TabConfig.Icon and TabConfig.Icon ~= "" then
+            local IconImg = Instance.new("ImageLabel")
+            IconImg.Size = UDim2.new(0, 16, 0, 16)
+            IconImg.Position = UDim2.new(0, 8, 0.5, -8)
+            IconImg.BackgroundTransparency = 1
+            IconImg.Name = "TabIcon"
+            IconImg.Parent = Tab
+            
+            local resolvedIcon = Icons[TabConfig.Icon] or TabConfig.Icon
+            if resolvedIcon ~= "" then
+                if not resolvedIcon:find("://") then
+                    IconImg.Image = "rbxassetid://" .. resolvedIcon
+                else
+                    IconImg.Image = resolvedIcon
+                end
+            end
+            textOffset = 30
+        end
+
+        TabName.Position = UDim2.new(0, textOffset, 0, 0)
         TabName.Name = "TabName"
         TabName.Parent = Tab
 
