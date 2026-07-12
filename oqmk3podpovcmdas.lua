@@ -1,4 +1,4 @@
---V4
+--V5
 
 local HttpService = game:GetService("HttpService")
 
@@ -206,7 +206,13 @@ local function MakeDraggable(topbarobject, object)
             defSizeX, defSizeY = 640, 400
         end
 
-        object.Size = UDim2.new(0, defSizeX, 0, defSizeY)
+        local targetSizeX = defSizeX
+        local targetSizeY = defSizeY
+        if GuiConfig.Size then
+            targetSizeX = GuiConfig.Size.X.Offset
+            targetSizeY = GuiConfig.Size.Y.Offset
+        end
+        object.Size = UDim2.new(0, targetSizeX, 0, targetSizeY)
 
         local changesizeobject = Instance.new("Frame")
         changesizeobject.AnchorPoint = Vector2.new(1, 1)
