@@ -1,4 +1,4 @@
---V17
+--V18
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -861,6 +861,7 @@ function ZeroImpact:Window(GuiConfig)
                 tabData.TabFrame.Visible = true
                 for _, sectionData in ipairs(tabData.Sections) do
                     sectionData.SectionFrame.Visible = true
+                    sectionData.ForceOpen = false
                     for _, itemData in ipairs(sectionData.Items) do
                         itemData.Frame.Visible = true
                     end
@@ -894,8 +895,14 @@ function ZeroImpact:Window(GuiConfig)
                 if anyItemMatches or sectionMatches or tabMatches then
                     sectionData.SectionFrame.Visible = true
                     anySectionMatches = true
+                    if anyItemMatches then
+                        sectionData.ForceOpen = true
+                    else
+                        sectionData.ForceOpen = false
+                    end
                 else
                     sectionData.SectionFrame.Visible = false
+                    sectionData.ForceOpen = false
                 end
                 sectionData.UpdateSize()
             end
@@ -1664,29 +1671,41 @@ function ZeroImpact:Window(GuiConfig)
                 UpdateScrollSize()
             end
 
+            local mySectionData
+
             local function UpdateSizeSection()
-                if OpenSection then
+                if OpenSection or (mySectionData and mySectionData.ForceOpen) then
                     local SectionSizeYWitdh = 38
                     for _, v in SectionAdd:GetChildren() do
                         if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
                             SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                         end
                     end
-                    TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
+                    if FeatureFrame and FeatureFrame.Parent then
+                        TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
+                    end
                     TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) })
                         :Play()
                     TweenService:Create(SectionAdd, TweenInfo.new(0.5),
                         { Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38) }):Play()
                     task.wait(0.5)
                     UpdateScrollSize()
+                else
+                    if FeatureFrame and FeatureFrame.Parent then
+                        TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
+                    end
+                    TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
+                    task.wait(0.5)
+                    UpdateScrollSize()
                 end
             end
 
-            local mySectionData = {
+            mySectionData = {
                 SectionFrame = Section,
                 SectionTitle = Title,
                 Items = {},
-                UpdateSize = UpdateSizeSection
+                UpdateSize = UpdateSizeSection,
+                ForceOpen = false
             }
             table.insert(myTabData.Sections, mySectionData)
 
@@ -1726,7 +1745,9 @@ function ZeroImpact:Window(GuiConfig)
                         SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                     end
                 end
-                FeatureFrame.Rotation = 90
+                if FeatureFrame and FeatureFrame.Parent then
+                    FeatureFrame.Rotation = 90
+                end
                 Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
                 SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
                 UpdateScrollSize()
