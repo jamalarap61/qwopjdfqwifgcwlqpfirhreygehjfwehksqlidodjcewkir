@@ -1,3 +1,5 @@
+--V2
+
 local HttpService = game:GetService("HttpService")
 
 if not isfolder("ZeroImpact") then
@@ -521,9 +523,25 @@ function ZeroImpact:Window(GuiConfig)
     GuiConfig.Title        = GuiConfig.Title or "ZeroImpact"
     GuiConfig.Footer       = GuiConfig.Footer or "ZeroImpact >:D"
     GuiConfig.Color        = GuiConfig.Color or Color3.fromRGB(0, 180, 255)
+    GuiConfig.Color2       = GuiConfig.Color2 or Color3.fromRGB(150, 150, 150)
+    GuiConfig.Image        = GuiConfig.Image or "76536228337525"
+    GuiConfig.LogoHUB      = GuiConfig.LogoHUB or "76536228337525"
+    GuiConfig.WindowIMG    = GuiConfig.WindowIMG or ""
     GuiConfig["Tab Width"] = GuiConfig["Tab Width"] or 120
     GuiConfig.Version      = GuiConfig.Version or 1
 
+    if GuiConfig.ConfigPath then
+        ConfigFile = GuiConfig.ConfigPath
+        local path = ""
+        for part in ConfigFile:gmatch("[^/\\]+") do
+            if not ConfigFile:find(part .. "$", 1, true) then
+                path = (path == "") and part or (path .. "/" .. part)
+                if not isfolder(path) then
+                    makefolder(path)
+                end
+            end
+        end
+    end
     CURRENT_VERSION        = GuiConfig.Version
     LoadConfigFromFile()
 
@@ -636,7 +654,7 @@ function ZeroImpact:Window(GuiConfig)
     TextLabel.Parent = Top
 
     local LogoImg = Instance.new("ImageLabel")
-	LogoImg.Image = "rbxassetid://136289055140268"
+	LogoImg.Image = "rbxassetid://76536228337525"
 	LogoImg.BackgroundTransparency = 1
 	LogoImg.BorderSizePixel = 0
 	LogoImg.Size = UDim2.new(0, 22, 0, 22)
