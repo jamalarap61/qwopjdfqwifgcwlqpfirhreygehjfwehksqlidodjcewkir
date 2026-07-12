@@ -1,4 +1,4 @@
---11
+--12
 
 local HttpService = game:GetService("HttpService")
 
@@ -28,6 +28,10 @@ function SaveConfig()
 end
 
 function LoadConfigFromFile()
+    if _G.ZeroImpactAutoLoad == false then
+        ConfigData = { _version = CURRENT_VERSION }
+        return
+    end
     if not CURRENT_VERSION then return end
     if isfile and isfile(ConfigFile) then
         local success, result = pcall(function()
@@ -649,7 +653,7 @@ function ZeroImpact:Window(GuiConfig)
         Main.BackgroundTransparency = 1
         Main.ImageTransparency = GuiConfig.ThemeTransparency or 0.15
     else
-        Main.BackgroundColor3 = Color3.fromRGB(12, 16, 24) -- Latar Warna Window
+        Main.BackgroundColor3 = Color3.fromRGB(20, 32, 48) -- Latar Warna Window
         Main.BackgroundTransparency = 0.1
     end
 
