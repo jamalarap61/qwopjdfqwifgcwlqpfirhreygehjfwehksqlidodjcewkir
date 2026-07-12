@@ -1,4 +1,4 @@
---V14
+--V15
 
 local HttpService = game:GetService("HttpService")
 
@@ -579,7 +579,11 @@ function ZeroImpact:Window(GuiConfig)
         end
     end
     CURRENT_VERSION        = GuiConfig.Version
-    LoadConfigFromFile()
+    if _G.ZeroImpactAutoLoad ~= false then
+        LoadConfigFromFile()
+    else
+        ConfigData = { _version = CURRENT_VERSION }
+    end
 
     local GuiFunc = {}
 
