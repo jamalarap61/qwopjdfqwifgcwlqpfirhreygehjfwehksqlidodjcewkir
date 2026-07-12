@@ -1,4 +1,4 @@
---V10
+--11
 
 local HttpService = game:GetService("HttpService")
 
@@ -20,6 +20,7 @@ Elements         = {}
 CURRENT_VERSION  = nil
 
 function SaveConfig()
+    if _G.ZeroImpactAutoSave == false then return end
     if writefile then
         ConfigData._version = CURRENT_VERSION
         writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
@@ -301,6 +302,22 @@ function CircleClick(Button, X, Y)
 end
 
 local ZeroImpact = {}
+
+function ZeroImpact:SaveConfig()
+    local old_state = _G.ZeroImpactAutoSave
+    _G.ZeroImpactAutoSave = true
+    SaveConfig()
+    _G.ZeroImpactAutoSave = old_state
+end
+
+function ZeroImpact:LoadConfig(newPath)
+    if newPath then
+        ConfigFile = newPath
+    end
+    LoadConfigFromFile()
+    LoadConfigElements()
+end
+
 function ZeroImpact:MakeNotify(NotifyConfig)
     local NotifyConfig = NotifyConfig or {}
     NotifyConfig.Title = NotifyConfig.Title or "ZeroImpact"
