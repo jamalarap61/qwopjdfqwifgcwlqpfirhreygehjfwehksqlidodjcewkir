@@ -1,4 +1,4 @@
---V9
+--V10
 
 local HttpService = game:GetService("HttpService")
 
@@ -1720,11 +1720,11 @@ function ZeroImpact:Window(GuiConfig)
                 ParagraphContent.BackgroundTransparency = 1
                 ParagraphContent.Position = UDim2.new(0, iconOffset, 0, 25)
                 ParagraphContent.Name = "ParagraphContent"
-                ParagraphContent.TextWrapped = false
+                ParagraphContent.TextWrapped = true
                 ParagraphContent.RichText = true
                 ParagraphContent.Parent = Paragraph
 
-                ParagraphContent.Size = UDim2.new(1, -16, 0, ParagraphContent.TextBounds.Y)
+                ParagraphContent.Size = UDim2.new(1, -iconOffset - 16, 0, ParagraphContent.TextBounds.Y)
 
                 local ParagraphButton
                 if ParagraphConfig.ButtonText then
