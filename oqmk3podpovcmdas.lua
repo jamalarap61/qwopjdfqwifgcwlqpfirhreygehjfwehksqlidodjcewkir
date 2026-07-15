@@ -1,4 +1,4 @@
---V31
+--V32
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -47,11 +47,21 @@ local CurrentTabName = ""
 local FavoritedUpdateScroll = nil
 local PlaceholderFrame = nil
 
+local savePending = false
 function SaveConfig()
     if _G.ZeroImpactAutoSave == false then return end
-    if writefile then
-        ConfigData._version = CURRENT_VERSION
-        writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
+    if not savePending then
+        savePending = true
+        task.spawn(function()
+            task.wait(0.1) -- 100ms debounce
+            savePending = false
+            if writefile and CURRENT_VERSION then
+                ConfigData._version = CURRENT_VERSION
+                pcall(function()
+                    writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
+                end)
+            end
+        end)
     end
 end
 
@@ -2469,7 +2479,8 @@ function ZeroImpact:Window(GuiConfig)
                     ToggleFunc:Set(ToggleFunc.Value)
                 end)
 
-                function ToggleFunc:Set(Value)
+                function ToggleFunc:Set(Value, ignoreSave)
+                    ToggleFunc.Value = Value
                     if typeof(ToggleConfig.Callback) == "function" then
                         local ok, err = pcall(function()
                             ToggleConfig.Callback(Value)
@@ -2477,7 +2488,9 @@ function ZeroImpact:Window(GuiConfig)
                         if not ok then warn("Toggle Callback error:", err) end
                     end
                     ConfigData[configKey] = Value
-                    SaveConfig()
+                    if not ignoreSave then
+                        SaveConfig()
+                    end
                     if Value then
                         TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
                         TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(20, 28, 40) })
@@ -2497,7 +2510,7 @@ function ZeroImpact:Window(GuiConfig)
                     end
                 end
 
-                ToggleFunc:Set(ToggleFunc.Value)
+                ToggleFunc:Set(ToggleFunc.Value, true)
                 CountItem = CountItem + 1
                 Elements[configKey] = ToggleFunc
                 return ToggleFunc
@@ -2666,7 +2679,7 @@ function ZeroImpact:Window(GuiConfig)
                     end
                     return Result
                 end
-                function SliderFunc:Set(Value)
+                function SliderFunc:Set(Value, ignoreSave)
                     Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
                     SliderFunc.Value = Value
                     TextBox.Text = tostring(Value)
@@ -2676,9 +2689,16 @@ function ZeroImpact:Window(GuiConfig)
                         { Size = UDim2.fromScale((Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1) }
                     ):Play()
 
-                    SliderConfig.Callback(Value)
+                    if typeof(SliderConfig.Callback) == "function" then
+                        local ok, err = pcall(function()
+                            SliderConfig.Callback(Value)
+                        end)
+                        if not ok then warn("Slider Callback error:", err) end
+                    end
                     ConfigData[configKey] = Value
-                    SaveConfig()
+                    if not ignoreSave then
+                        SaveConfig()
+                    end
                 end
 
                 SliderFrame.InputBegan:Connect(function(Input)
@@ -2730,7 +2750,7 @@ function ZeroImpact:Window(GuiConfig)
                         SliderFunc:Set(SliderConfig.Min)
                     end
                 end)
-                SliderFunc:Set(SliderConfig.Default)
+                SliderFunc:Set(SliderConfig.Default, true)
                 CountItem = CountItem + 1
                 Elements[configKey] = SliderFunc
                 return SliderFunc
@@ -2849,15 +2869,22 @@ function ZeroImpact:Window(GuiConfig)
                 InputTextBox.Size = UDim2.new(1, -10, 1, -8)
                 InputTextBox.Name = "InputTextBox"
                 InputTextBox.Parent = InputFrame
-                function InputFunc:Set(Value)
+                function InputFunc:Set(Value, ignoreSave)
                     InputTextBox.Text = Value
                     InputFunc.Value = Value
-                    InputConfig.Callback(Value)
+                    if typeof(InputConfig.Callback) == "function" then
+                        local ok, err = pcall(function()
+                            InputConfig.Callback(Value)
+                        end)
+                        if not ok then warn("Input Callback error:", err) end
+                    end
                     ConfigData[configKey] = Value
-                    SaveConfig()
+                    if not ignoreSave then
+                        SaveConfig()
+                    end
                 end
 
-                InputFunc:Set(InputFunc.Value)
+                InputFunc:Set(InputFunc.Value, true)
 
                 InputTextBox.FocusLost:Connect(function()
                     InputFunc:Set(InputTextBox.Text)
@@ -3120,7 +3147,7 @@ function ZeroImpact:Window(GuiConfig)
                     end)
                 end
 
-                function DropdownFunc:Set(Value)
+                function DropdownFunc:Set(Value, ignoreSave)
                     if DropdownConfig.Multi then
                         DropdownFunc.Value = type(Value) == "table" and Value or {}
                     else
@@ -3128,7 +3155,9 @@ function ZeroImpact:Window(GuiConfig)
                     end
 
                     ConfigData[configKey] = DropdownFunc.Value
-                    SaveConfig()
+                    if not ignoreSave then
+                        SaveConfig()
+                    end
 
                     local texts = {}
                     for _, Drop in ScrollSelect:GetChildren() do
@@ -3159,24 +3188,27 @@ function ZeroImpact:Window(GuiConfig)
                         or table.concat(texts, ", ")
 
                     if DropdownConfig.Callback then
-                        if DropdownConfig.Multi then
-                            DropdownConfig.Callback(DropdownFunc.Value)
-                        else
-                            local str = (DropdownFunc.Value ~= nil) and tostring(DropdownFunc.Value) or ""
-                            DropdownConfig.Callback(str)
-                        end
+                        local ok, err = pcall(function()
+                            if DropdownConfig.Multi then
+                                DropdownConfig.Callback(DropdownFunc.Value)
+                            else
+                                local str = (DropdownFunc.Value ~= nil) and tostring(DropdownFunc.Value) or ""
+                                DropdownConfig.Callback(str)
+                            end
+                        end)
+                        if not ok then warn("Dropdown Callback error:", err) end
                     end
                 end
 
-                function DropdownFunc:SetValue(val)
-                    self:Set(val)
+                function DropdownFunc:SetValue(val, ignoreSave)
+                    self:Set(val, ignoreSave)
                 end
 
                 function DropdownFunc:GetValue()
                     return self.Value
                 end
 
-                function DropdownFunc:SetValues(newList, selecting)
+                function DropdownFunc:SetValues(newList, selecting, ignoreSave)
                     newList = newList or {}
                     selecting = selecting or (DropdownConfig.Multi and {} or nil)
                     DropdownFunc:Clear()
@@ -3184,10 +3216,10 @@ function ZeroImpact:Window(GuiConfig)
                         DropdownFunc:AddOption(v)
                     end
                     DropdownFunc.Options = newList
-                    DropdownFunc:Set(selecting)
+                    DropdownFunc:Set(selecting, ignoreSave)
                 end
 
-                DropdownFunc:SetValues(DropdownFunc.Options, DropdownFunc.Value)
+                DropdownFunc:SetValues(DropdownFunc.Options, DropdownFunc.Value, true)
 
                 CountItem = CountItem + 1
                 CountDropdown = CountDropdown + 1
