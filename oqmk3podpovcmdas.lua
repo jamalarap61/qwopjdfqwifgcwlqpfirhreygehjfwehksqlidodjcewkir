@@ -1,4 +1,4 @@
---V36
+--V37
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -2470,6 +2470,7 @@ function ZeroImpact:Window(GuiConfig)
                 end)
 
                 function ToggleFunc:Set(Value)
+                    ToggleFunc.Value = Value
                     if typeof(ToggleConfig.Callback) == "function" then
                         local ok, err = pcall(function()
                             ToggleConfig.Callback(Value)
@@ -3297,7 +3298,7 @@ function ZeroImpact:Window(GuiConfig)
         PlaceholderLabel.Font = Enum.Font.Gotham
         PlaceholderLabel.TextSize = 12
         PlaceholderLabel.TextColor3 = Color3.fromRGB(150, 170, 190)
-        PlaceholderLabel.Text = "Belum ada section favorit.\n\nKlik ikon bintang pada section mana pun untuk menambahkannya ke sini!"
+        PlaceholderLabel.Text = "No favorite sections yet.\n\nClick the star icon on any section to add it here!"
         PlaceholderLabel.TextWrapped = true
         PlaceholderLabel.Parent = PlaceholderFrame
     end
