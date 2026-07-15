@@ -1,4 +1,4 @@
---V29
+--V30
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -3090,7 +3090,6 @@ function ZeroImpact:Window(GuiConfig)
 
 
 
-        CountSection = CountSection + 1
         return Items
     end
 
