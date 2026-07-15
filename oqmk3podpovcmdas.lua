@@ -1,4 +1,4 @@
---V20
+--V21
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -23,11 +23,29 @@ gameName         = gameName:gsub("[^%w_ ]", "")
 gameName         = gameName:gsub("%s+", "_")
 
 local ConfigFile = "ZeroImpact/Config/ZeroImpact_" .. gameName .. ".json"
+local FavoriteFile = "ZeroImpact/Config/ZeroImpact_" .. gameName .. "_Favorites.json"
+
+local FavoritesData = {}
+if isfile(FavoriteFile) then
+    pcall(function()
+        FavoritesData = HttpService:JSONDecode(readfile(FavoriteFile)) or {}
+    end)
+end
+
+local function SaveFavorites()
+    pcall(function()
+        writefile(FavoriteFile, HttpService:JSONEncode(FavoritesData))
+    end)
+end
 
 ConfigData       = {}
 Elements         = {}
 CURRENT_VERSION  = nil
 local SearchableItems = {}
+local AllSectionsList = {}
+local CurrentTabName = ""
+local FavoritedUpdateScroll = nil
+local PlaceholderFrame = nil
 
 function SaveConfig()
     if _G.ZeroImpactAutoSave == false then return end
@@ -1415,13 +1433,17 @@ function ZeroImpact:Window(GuiConfig)
             TabFrame = Tab,
             TabName = TabConfig.Name:gsub("^%s*|%s*", ""),
             Sections = {},
-            UpdateScroll = UpdateScrollSize
+            UpdateScroll = UpdateScrollSize,
+            ScrollLayers = ScrolLayers
         }
         table.insert(SearchableItems, myTabData)
 
         Tab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        if CountTab == 0 then
+        if CountTab == 1 then
             Tab.BackgroundTransparency = 0.9200000166893005
+            if SearchableItems[1] then
+                SearchableItems[1].TabFrame.BackgroundTransparency = 0.999
+            end
         else
             Tab.BackgroundTransparency = 0.9990000128746033
         end
@@ -1483,14 +1505,15 @@ function ZeroImpact:Window(GuiConfig)
         TabName.Name = "TabName"
         TabName.Parent = Tab
 
-        if CountTab == 0 then
-            LayersPageLayout:JumpToIndex(0)
+        if CountTab == 1 then
+            LayersPageLayout:JumpToIndex(1)
             NameTab.Text = TabConfig.Name
+            CurrentTabName = TabConfig.Name:gsub("^%s*|%s*", "")
             local ChooseFrame = Instance.new("Frame");
             ChooseFrame.BackgroundColor3 = GuiConfig.Color
             ChooseFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
             ChooseFrame.BorderSizePixel = 0
-            ChooseFrame.Position = UDim2.new(0, 2, 0, 9)
+            ChooseFrame.Position = UDim2.new(0, 2, 0, 9 + (33 * CountTab))
             ChooseFrame.Size = UDim2.new(0, 1, 0, 12)
             ChooseFrame.Name = "ChooseFrame"
             ChooseFrame.Parent = Tab
@@ -1504,6 +1527,36 @@ function ZeroImpact:Window(GuiConfig)
 
         TabButton.Activated:Connect(function()
             CircleClick(TabButton, Mouse.X, Mouse.Y)
+            local targetTabName = TabConfig.Name:gsub("^%s*|%s*", "")
+
+            if targetTabName == "Favorited" then
+                local hasFavorites = false
+                for _, sData in ipairs(AllSectionsList) do
+                    if sData.IsFavorited then
+                        sData.SectionFrame.Parent = ScrolLayers
+                        sData.UpdateSize(true)
+                        hasFavorites = true
+                    end
+                end
+                if PlaceholderFrame then
+                    PlaceholderFrame.Visible = not hasFavorites
+                end
+                UpdateScrollSize()
+            else
+                if CurrentTabName == "Favorited" then
+                    for _, sData in ipairs(AllSectionsList) do
+                        if sData.IsFavorited then
+                            sData.SectionFrame.Parent = sData.OriginalParent
+                            sData.UpdateSize(true)
+                            if sData.UpdateOriginalScroll then
+                                sData.UpdateOriginalScroll()
+                            end
+                        end
+                    end
+                end
+            end
+            CurrentTabName = targetTabName
+
             local FrameChoose
             for a, s in ScrollTab:GetChildren() do
                 for i, v in s:GetChildren() do
@@ -1636,10 +1689,34 @@ function ZeroImpact:Window(GuiConfig)
             SectionTitle.BackgroundTransparency = 0.9990000128746033
             SectionTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
             SectionTitle.BorderSizePixel = 0
-            SectionTitle.Position = UDim2.new(0, 10, 0.5, 0)
-            SectionTitle.Size = UDim2.new(1, -50, 0, 13)
+            SectionTitle.Position = UDim2.new(0, 30, 0.5, 0)
+            SectionTitle.Size = UDim2.new(1, -70, 0, 13)
             SectionTitle.Name = "SectionTitle"
             SectionTitle.Parent = SectionReal
+
+            local favKey = TabConfig.Name:gsub("^%s*|%s*", "") .. "/" .. Title
+            local isFav = FavoritesData[favKey] == true
+
+            local StarBtn = Instance.new("ImageButton")
+            StarBtn.Name = "StarBtn"
+            StarBtn.Size = UDim2.new(0, 14, 0, 14)
+            StarBtn.Position = UDim2.new(0, 10, 0.5, -7)
+            StarBtn.BackgroundTransparency = 1
+            StarBtn.ZIndex = 10
+            StarBtn.Parent = SectionReal
+
+            local function updateStarVisuals()
+                if isFav then
+                    StarBtn.Image = "rbxassetid://10734898122"
+                    StarBtn.ImageColor3 = Color3.fromRGB(255, 200, 0)
+                    StarBtn.ImageTransparency = 0
+                else
+                    StarBtn.Image = "rbxassetid://10734897956"
+                    StarBtn.ImageColor3 = Color3.fromRGB(200, 200, 200)
+                    StarBtn.ImageTransparency = 0.5
+                end
+            end
+            updateStarVisuals()
 
             --// Section Add
             local SectionAdd = Instance.new("Frame");
@@ -1726,9 +1803,32 @@ function ZeroImpact:Window(GuiConfig)
                 SectionTitle = Title,
                 Items = {},
                 UpdateSize = UpdateSizeSection,
-                ForceOpen = false
+                ForceOpen = false,
+                OriginalParent = ScrolLayers,
+                IsFavorited = isFav,
+                TabName = TabConfig.Name:gsub("^%s*|%s*", ""),
+                UpdateOriginalScroll = UpdateScrollSize
             }
             table.insert(myTabData.Sections, mySectionData)
+            table.insert(AllSectionsList, mySectionData)
+
+            StarBtn.Activated:Connect(function()
+                isFav = not isFav
+                FavoritesData[favKey] = isFav or nil
+                mySectionData.IsFavorited = isFav
+                updateStarVisuals()
+                SaveFavorites()
+                
+                if CurrentTabName == "Favorited" then
+                    if not isFav then
+                        Section.Parent = ScrolLayers
+                        UpdateSizeSection(true)
+                        if FavoritedUpdateScroll then
+                            FavoritedUpdateScroll()
+                        end
+                    end
+                end
+            end)
 
             if AlwaysOpen == true then
                 SectionButton:Destroy()
@@ -3129,6 +3229,33 @@ function ZeroImpact:Window(GuiConfig)
 
     function Tabs:ToggleUI()
         GuiFunc:ToggleUI()
+    end
+
+    -- Auto-create the Favorited Tab
+    local FavoritedSections = Tabs:AddTab({ Name = " | Favorited", Icon = "star" })
+    
+    -- Expose FavoritedUpdateScroll and setup placeholder
+    if SearchableItems[1] then
+        FavoritedUpdateScroll = SearchableItems[1].UpdateScroll
+        local favScrollLayers = SearchableItems[1].ScrollLayers
+        
+        PlaceholderFrame = Instance.new("Frame")
+        PlaceholderFrame.Name = "PlaceholderFrame"
+        PlaceholderFrame.Size = UDim2.new(1, 0, 1, 0)
+        PlaceholderFrame.BackgroundTransparency = 1
+        PlaceholderFrame.Parent = favScrollLayers
+        
+        local PlaceholderLabel = Instance.new("TextLabel")
+        PlaceholderLabel.Name = "PlaceholderLabel"
+        PlaceholderLabel.Size = UDim2.new(0.9, 0, 0.4, 0)
+        PlaceholderLabel.Position = UDim2.new(0.05, 0, 0.3, 0)
+        PlaceholderLabel.BackgroundTransparency = 1
+        PlaceholderLabel.Font = Enum.Font.Gotham
+        PlaceholderLabel.TextSize = 12
+        PlaceholderLabel.TextColor3 = Color3.fromRGB(150, 170, 190)
+        PlaceholderLabel.Text = "Belum ada section favorit.\n\nKlik ikon bintang pada section mana pun untuk menambahkannya ke sini!"
+        PlaceholderLabel.TextWrapped = true
+        PlaceholderLabel.Parent = PlaceholderFrame
     end
 
     return Tabs
