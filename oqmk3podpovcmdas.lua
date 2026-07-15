@@ -1505,15 +1505,12 @@ function ZeroImpact:Window(GuiConfig)
         TabName.Name = "TabName"
         TabName.Parent = Tab
 
-        if CountTab == 1 then
-            LayersPageLayout:JumpToIndex(1)
-            NameTab.Text = TabConfig.Name
-            CurrentTabName = TabConfig.Name:gsub("^%s*|%s*", "")
+        if CountTab == 0 then
             local ChooseFrame = Instance.new("Frame");
             ChooseFrame.BackgroundColor3 = GuiConfig.Color
             ChooseFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
             ChooseFrame.BorderSizePixel = 0
-            ChooseFrame.Position = UDim2.new(0, 2, 0, 9 + (33 * CountTab))
+            ChooseFrame.Position = UDim2.new(0, 2, 0, 9)
             ChooseFrame.Size = UDim2.new(0, 1, 0, 12)
             ChooseFrame.Name = "ChooseFrame"
             ChooseFrame.Parent = Tab
@@ -1523,6 +1520,17 @@ function ZeroImpact:Window(GuiConfig)
             UIStroke2.Parent = ChooseFrame
 
             UICorner4.Parent = ChooseFrame
+        elseif CountTab == 1 then
+            LayersPageLayout:JumpToIndex(1)
+            NameTab.Text = TabConfig.Name
+            CurrentTabName = TabConfig.Name:gsub("^%s*|%s*", "")
+            if SearchableItems[1] then
+                local firstTabFrame = SearchableItems[1].TabFrame
+                local ChooseFrame = firstTabFrame:FindFirstChild("ChooseFrame")
+                if ChooseFrame then
+                    ChooseFrame.Position = UDim2.new(0, 2, 0, 9 + (33 * CountTab))
+                end
+            end
         end
 
         TabButton.Activated:Connect(function()
@@ -1707,11 +1715,11 @@ function ZeroImpact:Window(GuiConfig)
 
             local function updateStarVisuals()
                 if isFav then
-                    StarBtn.Image = "rbxassetid://10734898122"
+                    StarBtn.Image = "rbxassetid://107005941750079"
                     StarBtn.ImageColor3 = Color3.fromRGB(255, 200, 0)
                     StarBtn.ImageTransparency = 0
                 else
-                    StarBtn.Image = "rbxassetid://10734897956"
+                    StarBtn.Image = "rbxassetid://10734966248"
                     StarBtn.ImageColor3 = Color3.fromRGB(200, 200, 200)
                     StarBtn.ImageTransparency = 0.5
                 end
@@ -3253,7 +3261,7 @@ function ZeroImpact:Window(GuiConfig)
         PlaceholderLabel.Font = Enum.Font.Gotham
         PlaceholderLabel.TextSize = 12
         PlaceholderLabel.TextColor3 = Color3.fromRGB(150, 170, 190)
-        PlaceholderLabel.Text = "Belum ada section favorit.\n\nKlik ikon bintang pada section mana pun untuk menambahkannya ke sini!"
+        PlaceholderLabel.Text = "No Features Favorited"
         PlaceholderLabel.TextWrapped = true
         PlaceholderLabel.Parent = PlaceholderFrame
     end
