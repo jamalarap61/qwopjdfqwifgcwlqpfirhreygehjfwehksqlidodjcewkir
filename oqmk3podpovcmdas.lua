@@ -1,4 +1,4 @@
---v38
+--V39
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -2465,13 +2465,13 @@ function ZeroImpact:Window(GuiConfig)
                 UICorner23.Parent = ToggleCircle
 
                 ToggleButton.Activated:Connect(function()
-                    print("[DEBUG UI] Tombol DIKLIK! Judul:", ToggleConfig.Title, "Tab Aktif:", CurrentTabName, "Status Lama:", ToggleFunc.Value)
+                    --print("[DEBUG UI] Tombol DIKLIK! Judul:", ToggleConfig.Title, "Tab Aktif:", CurrentTabName, "Status Lama:", ToggleFunc.Value)
                     ToggleFunc.Value = not ToggleFunc.Value
                     ToggleFunc:Set(ToggleFunc.Value)
                 end)
 
                 function ToggleFunc:Set(Value)
-                    print("[DEBUG UI] ToggleFunc:Set dipicu! Judul:", ToggleConfig.Title, "Value baru:", Value, "Tab Aktif:", CurrentTabName)
+                    --print("[DEBUG UI] ToggleFunc:Set dipicu! Judul:", ToggleConfig.Title, "Value baru:", Value, "Tab Aktif:", CurrentTabName)
                     ToggleFunc.Value = Value
                     if typeof(ToggleConfig.Callback) == "function" then
                         local ok, err = pcall(function()
