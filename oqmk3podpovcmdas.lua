@@ -1,4 +1,4 @@
---V28
+--V29
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -3153,7 +3153,6 @@ function ZeroImpact:Window(GuiConfig)
         local UIStroke2 = Instance.new("UIStroke");
         local UICorner4 = Instance.new("UICorner");
 
-        currentLazyTab.myTabData = myTabData
         local myTabData = {
             TabFrame = Tab,
             TabName = TabConfig.Name:gsub("^%s*|%s*", ""),
@@ -3161,6 +3160,7 @@ function ZeroImpact:Window(GuiConfig)
             UpdateScroll = UpdateScrollSize,
             ScrollLayers = ScrolLayers
         }
+        currentLazyTab.myTabData = myTabData
         table.insert(SearchableItems, myTabData)
 
         Tab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
