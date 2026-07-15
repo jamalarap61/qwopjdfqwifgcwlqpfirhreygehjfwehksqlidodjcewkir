@@ -1,4 +1,4 @@
---V26
+--V27
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -2064,7 +2064,7 @@ function ZeroImpact:Window(GuiConfig)
 
                 local PanelFunc = { Value = PanelConfig.Default }
 
-                local baseHeight = 50
+                local baseHeight = 64
 
                 if PanelConfig.Placeholder then
                     baseHeight = baseHeight + 40
@@ -2107,8 +2107,9 @@ function ZeroImpact:Window(GuiConfig)
                 Content.TextXAlignment = Enum.TextXAlignment.Left
                 Content.BackgroundTransparency = 1
                 Content.RichText = true
+                Content.TextWrapped = true
                 Content.Position = UDim2.new(0, 10, 0, 28)
-                Content.Size = UDim2.new(1, -20, 0, 14)
+                Content.Size = UDim2.new(1, -20, 0, 28)
                 Content.Parent = Panel
 
                 local InputBox
@@ -2117,7 +2118,7 @@ function ZeroImpact:Window(GuiConfig)
                     InputFrame.AnchorPoint = Vector2.new(0.5, 0)
                     InputFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                     InputFrame.BackgroundTransparency = 0.95
-                    InputFrame.Position = UDim2.new(0.5, 0, 0, 48)
+                    InputFrame.Position = UDim2.new(0.5, 0, 0, 62)
                     InputFrame.Size = UDim2.new(1, -20, 0, 30)
                     InputFrame.Parent = Panel
 
@@ -2141,9 +2142,9 @@ function ZeroImpact:Window(GuiConfig)
 
                 local yBtn = 0
                 if PanelConfig.Placeholder then
-                    yBtn = 88
+                    yBtn = 102
                 else
-                    yBtn = 48
+                    yBtn = 62
                 end
 
                 local ButtonMain = Instance.new("TextButton")
