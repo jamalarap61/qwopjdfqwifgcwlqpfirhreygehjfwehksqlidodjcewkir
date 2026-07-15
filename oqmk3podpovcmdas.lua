@@ -1,4 +1,4 @@
---V21
+--V23
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -3261,7 +3261,7 @@ function ZeroImpact:Window(GuiConfig)
         PlaceholderLabel.Font = Enum.Font.Gotham
         PlaceholderLabel.TextSize = 12
         PlaceholderLabel.TextColor3 = Color3.fromRGB(150, 170, 190)
-        PlaceholderLabel.Text = "No Features Favorited"
+        PlaceholderLabel.Text = "No favorite sections yet.\n\nClick the star icon on any section to add it here!"
         PlaceholderLabel.TextWrapped = true
         PlaceholderLabel.Parent = PlaceholderFrame
     end
