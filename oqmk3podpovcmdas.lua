@@ -1,4 +1,4 @@
---V37
+--v38
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -2465,11 +2465,13 @@ function ZeroImpact:Window(GuiConfig)
                 UICorner23.Parent = ToggleCircle
 
                 ToggleButton.Activated:Connect(function()
+                    print("[DEBUG UI] Tombol DIKLIK! Judul:", ToggleConfig.Title, "Tab Aktif:", CurrentTabName, "Status Lama:", ToggleFunc.Value)
                     ToggleFunc.Value = not ToggleFunc.Value
                     ToggleFunc:Set(ToggleFunc.Value)
                 end)
 
                 function ToggleFunc:Set(Value)
+                    print("[DEBUG UI] ToggleFunc:Set dipicu! Judul:", ToggleConfig.Title, "Value baru:", Value, "Tab Aktif:", CurrentTabName)
                     ToggleFunc.Value = Value
                     if typeof(ToggleConfig.Callback) == "function" then
                         local ok, err = pcall(function()
@@ -3298,7 +3300,7 @@ function ZeroImpact:Window(GuiConfig)
         PlaceholderLabel.Font = Enum.Font.Gotham
         PlaceholderLabel.TextSize = 12
         PlaceholderLabel.TextColor3 = Color3.fromRGB(150, 170, 190)
-        PlaceholderLabel.Text = "No favorite sections yet.\n\nClick the star icon on any section to add it here!"
+        PlaceholderLabel.Text = "Belum ada section favorit.\n\nKlik ikon bintang pada section mana pun untuk menambahkannya ke sini!"
         PlaceholderLabel.TextWrapped = true
         PlaceholderLabel.Parent = PlaceholderFrame
     end
