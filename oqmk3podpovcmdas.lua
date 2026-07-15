@@ -1,4 +1,4 @@
---V30
+--V31
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -887,55 +887,17 @@ function ZeroImpact:Window(GuiConfig)
 
     SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
         local query = SearchInput.Text:lower():gsub("%s+", "")
-        if query ~= "" then
-            for _, tabData in ipairs(SearchableItems) do
-                local lazyTab = lazyTabs[tabData.ScrollLayers]
-                if lazyTab and not lazyTab.Initialized then
-                    local cleanTabName = tabData.TabName:lower():gsub("%s+", "")
-                    local tabMatches = cleanTabName:find(query) ~= nil
-                    local anySectionMatches = false
-                    
-                    for _, vSection in ipairs(lazyTab.Sections) do
-                        local cleanSectionTitle = vSection.Title:lower():gsub("%s+", "")
-                        local sectionMatches = cleanSectionTitle:find(query) ~= nil
-                        local anyItemMatches = false
-                        
-                        for _, vWidget in ipairs(vSection.WidgetsData) do
-                            local cleanItemTitle = vWidget.Title:lower():gsub("%s+", "")
-                            if cleanItemTitle:find(query) then
-                                anyItemMatches = true
-                                break
-                            end
-                        end
-                        if sectionMatches or anyItemMatches then
-                            anySectionMatches = true
-                            break
-                        end
-                    end
-                    
-                    if tabMatches or anySectionMatches then
-                        initializeTab(tabData.ScrollLayers)
-                    end
-                end
-            end
-        end
-
-        local query = SearchInput.Text:lower():gsub("%s+", "")
         
         if query == "" then
             for _, tabData in ipairs(SearchableItems) do
                 tabData.TabFrame.Visible = true
                 for _, sectionData in ipairs(tabData.Sections) do
-                    if sectionData.SectionFrame then
-                        sectionData.SectionFrame.Visible = true
-                        sectionData.ForceOpen = false
-                        for _, itemData in ipairs(sectionData.Items) do
-                            if itemData.Frame then
-                                itemData.Frame.Visible = true
-                            end
-                        end
-                        sectionData.UpdateSize(true)
+                    sectionData.SectionFrame.Visible = true
+                    sectionData.ForceOpen = false
+                    for _, itemData in ipairs(sectionData.Items) do
+                        itemData.Frame.Visible = true
                     end
+                    sectionData.UpdateSize(true)
                 end
                 tabData.UpdateScroll()
             end
@@ -949,41 +911,35 @@ function ZeroImpact:Window(GuiConfig)
             local anySectionMatches = false
             
             for _, sectionData in ipairs(tabData.Sections) do
-                if sectionData.SectionFrame then
-                    local cleanSectionTitle = sectionData.SectionTitle:lower():gsub("%s+", "")
-                    local sectionMatches = cleanSectionTitle:find(query) ~= nil
-                    local anyItemMatches = false
+                local cleanSectionTitle = sectionData.SectionTitle:lower():gsub("%s+", "")
+                local sectionMatches = cleanSectionTitle:find(query) ~= nil
+                local anyItemMatches = false
+                
+                for _, itemData in ipairs(sectionData.Items) do
+                    local cleanItemTitle = itemData.Title:lower():gsub("%s+", "")
+                    local itemMatches = cleanItemTitle:find(query) ~= nil
                     
-                    for _, itemData in ipairs(sectionData.Items) do
-                        local cleanItemTitle = itemData.Title:lower():gsub("%s+", "")
-                        local itemMatches = cleanItemTitle:find(query) ~= nil
-                        
-                        if itemMatches or sectionMatches or tabMatches then
-                            if itemData.Frame then
-                                itemData.Frame.Visible = true
-                            end
-                            anyItemMatches = true
-                        else
-                            if itemData.Frame then
-                                itemData.Frame.Visible = false
-                            end
-                        end
-                    end
-                    
-                    if anyItemMatches or sectionMatches or tabMatches then
-                        sectionData.SectionFrame.Visible = true
-                        anySectionMatches = true
-                        if anyItemMatches then
-                            sectionData.ForceOpen = true
-                        else
-                            sectionData.ForceOpen = false
-                        end
+                    if itemMatches or sectionMatches or tabMatches then
+                        itemData.Frame.Visible = true
+                        anyItemMatches = true
                     else
-                        sectionData.SectionFrame.Visible = false
+                        itemData.Frame.Visible = false
+                    end
+                end
+                
+                if anyItemMatches or sectionMatches or tabMatches then
+                    sectionData.SectionFrame.Visible = true
+                    anySectionMatches = true
+                    if anyItemMatches then
+                        sectionData.ForceOpen = true
+                    else
                         sectionData.ForceOpen = false
                     end
-                    sectionData.UpdateSize(true)
+                else
+                    sectionData.SectionFrame.Visible = false
+                    sectionData.ForceOpen = false
                 end
+                sectionData.UpdateSize(true)
             end
             
             if tabMatches or anySectionMatches then
@@ -1461,307 +1417,520 @@ function ZeroImpact:Window(GuiConfig)
         scrollFrame.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
     end
 
-    
-    local lazyTabs = {}
+    function Tabs:AddTab(TabConfig)
+        local TabConfig = TabConfig or {}
+        TabConfig.Name = TabConfig.Name or "Tab"
+        TabConfig.Icon = TabConfig.Icon or ""
 
-    local function createSectionPhysical(ScrolLayers, Title, AlwaysOpen, TabConfig, myTabData, virtualSection)
-        local Title = Title or "Title"
-        local Section = Instance.new("Frame");
-        local UICorner1 = Instance.new("UICorner");
-        local UIGradient = Instance.new("UIGradient");
+        local ScrolLayers = Instance.new("ScrollingFrame");
+        local UIListLayout1 = Instance.new("UIListLayout");
 
-        Section.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        Section.BackgroundTransparency = 0.9990000128746033
-        Section.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        Section.BorderSizePixel = 0
-        Section.LayoutOrder = virtualSection.LayoutOrder or 1
-        Section.ClipsDescendants = true
-        Section.Size = UDim2.new(1, 0, 0, 30)
-        Section.Name = "Section"
-        Section.Parent = ScrolLayers
-
-        local SectionReal = Instance.new("Frame");
-        local UICorner = Instance.new("UICorner");
-        local UIStroke = Instance.new("UIStroke");
-        local SectionButton = Instance.new("TextButton");
-        local FeatureFrame = Instance.new("Frame");
-        local FeatureImg = Instance.new("ImageLabel");
-        local SectionTitle = Instance.new("TextLabel");
-
-        SectionReal.AnchorPoint = Vector2.new(0.5, 0)
-        SectionReal.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        SectionReal.BackgroundTransparency = 1
-        SectionReal.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        SectionReal.BorderSizePixel = 0
-        SectionReal.LayoutOrder = 1
-        SectionReal.Position = UDim2.new(0.5, 0, 0, 0)
-        SectionReal.Size = UDim2.new(1, 1, 0, 30)
-        SectionReal.Name = "SectionReal"
-        SectionReal.Parent = Section
-
-        UICorner.CornerRadius = UDim.new(0, 4)
-        UICorner.Parent = SectionReal
-
-        SectionButton.Font = Enum.Font.SourceSans
-        SectionButton.Text = ""
-        SectionButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-        SectionButton.TextSize = 14
-        SectionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        SectionButton.BackgroundTransparency = 0.9990000128746033
-        SectionButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        SectionButton.BorderSizePixel = 0
-        SectionButton.Size = UDim2.new(1, 0, 1, 0)
-        SectionButton.Name = "SectionButton"
-        SectionButton.Parent = SectionReal
-
-        FeatureFrame.AnchorPoint = Vector2.new(1, 0.5)
-        FeatureFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        FeatureFrame.BackgroundTransparency = 0.9990000128746033
-        FeatureFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        FeatureFrame.BorderSizePixel = 0
-        FeatureFrame.Position = UDim2.new(1, -5, 0.5, 0)
-        FeatureFrame.Size = UDim2.new(0, 20, 0, 20)
-        FeatureFrame.Name = "FeatureFrame"
-        FeatureFrame.Parent = SectionReal
-
-        FeatureImg.Image = "rbxassetid://16851841101"
-        FeatureImg.AnchorPoint = Vector2.new(0.5, 0.5)
-        FeatureImg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        FeatureImg.BackgroundTransparency = 0.9990000128746033
-        FeatureImg.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        FeatureImg.BorderSizePixel = 0
-        FeatureImg.Position = UDim2.new(0.5, 0, 0.5, 0)
-        FeatureImg.Rotation = -90
-        FeatureImg.Size = UDim2.new(1, 6, 1, 6)
-        FeatureImg.Name = "FeatureImg"
-        FeatureImg.Parent = FeatureFrame
-
-        SectionTitle.Font = Enum.Font.GothamBold
-        SectionTitle.Text = Title
-        SectionTitle.TextColor3 = Color3.fromRGB(230.77499270439148, 230.77499270439148, 230.77499270439148)
-        SectionTitle.TextSize = 13
-        SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
-        SectionTitle.TextYAlignment = Enum.TextYAlignment.Top
-        SectionTitle.AnchorPoint = Vector2.new(0, 0.5)
-        SectionTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        SectionTitle.BackgroundTransparency = 0.9990000128746033
-        SectionTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        SectionTitle.BorderSizePixel = 0
-        SectionTitle.Position = UDim2.new(0, 30, 0.5, 0)
-        SectionTitle.Size = UDim2.new(1, -70, 0, 13)
-        SectionTitle.Name = "SectionTitle"
-        SectionTitle.Parent = SectionReal
-
-        local favKey = TabConfig.Name:gsub("^%%s*|%%s*", "") .. "/" .. Title
-        local isFav = FavoritesData[favKey] == true
-
-        local StarBtn = Instance.new("ImageButton")
-        StarBtn.Name = "StarBtn"
-        StarBtn.Size = UDim2.new(0, 14, 0, 14)
-        StarBtn.Position = UDim2.new(0, 10, 0.5, -7)
-        StarBtn.BackgroundTransparency = 1
-        StarBtn.ZIndex = 10
-        StarBtn.Parent = SectionReal
-
-        local function updateStarVisuals()
-            if isFav then
-                StarBtn.Image = "rbxassetid://107005941750079"
-                StarBtn.ImageColor3 = Color3.fromRGB(255, 200, 0)
-                StarBtn.ImageTransparency = 0
-            else
-                StarBtn.Image = "rbxassetid://10734966248"
-                StarBtn.ImageColor3 = Color3.fromRGB(200, 200, 200)
-                StarBtn.ImageTransparency = 0.5
-            end
-        end
-        updateStarVisuals()
-
-        --// Section Add
-        local SectionAdd = Instance.new("Frame");
-        local UICorner8 = Instance.new("UICorner");
-        local UIListLayout2 = Instance.new("UIListLayout");
-
-        SectionAdd.AnchorPoint = Vector2.new(0.5, 0)
-        SectionAdd.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        SectionAdd.BackgroundTransparency = 0.9990000128746033
-        SectionAdd.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        SectionAdd.BorderSizePixel = 0
-        SectionAdd.ClipsDescendants = true
-        SectionAdd.LayoutOrder = 1
-        SectionAdd.Position = UDim2.new(0.5, 0, 0, 32)
-        SectionAdd.Size = UDim2.new(1, 0, 0, 100)
-        SectionAdd.Name = "SectionAdd"
-        SectionAdd.Parent = Section
-
-        UICorner8.CornerRadius = UDim.new(0, 2)
-        UICorner8.Parent = SectionAdd
-
-        UIListLayout2.Padding = UDim.new(0, 3)
-        UIListLayout2.SortOrder = Enum.SortOrder.LayoutOrder
-        UIListLayout2.Parent = SectionAdd
-
-        local OpenSection = false
-
-        local function UpdateSizeScroll()
+        local function UpdateScrollSize()
             UpdateScrollFrameSize(ScrolLayers)
         end
 
-        local mySectionData
+        ScrolLayers.ScrollBarImageColor3 = GuiConfig.Color
+        ScrolLayers.ScrollBarThickness = 3
+        ScrolLayers.Active = true
+        ScrolLayers.LayoutOrder = CountTab
+        ScrolLayers.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        ScrolLayers.BackgroundTransparency = 0.9990000128746033
+        ScrolLayers.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        ScrolLayers.BorderSizePixel = 0
+        ScrolLayers.Size = UDim2.new(1, 0, 1, 0)
+        ScrolLayers.Name = "ScrolLayers"
+        ScrolLayers.Parent = LayersFolder
 
-        local function UpdateSizeSection(instant)
-            if OpenSection or (mySectionData and mySectionData.ForceOpen) then
+        UIListLayout1.Padding = UDim.new(0, 3)
+        UIListLayout1.SortOrder = Enum.SortOrder.LayoutOrder
+        UIListLayout1.Parent = ScrolLayers
+
+        local Tab = Instance.new("Frame");
+        local UICorner3 = Instance.new("UICorner");
+        local TabButton = Instance.new("TextButton");
+        local TabName = Instance.new("TextLabel")
+        local UIStroke2 = Instance.new("UIStroke");
+        local UICorner4 = Instance.new("UICorner");
+
+        local myTabData = {
+            TabFrame = Tab,
+            TabName = TabConfig.Name:gsub("^%s*|%s*", ""),
+            Sections = {},
+            UpdateScroll = UpdateScrollSize,
+            ScrollLayers = ScrolLayers
+        }
+        table.insert(SearchableItems, myTabData)
+
+        Tab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        if CountTab == 1 then
+            Tab.BackgroundTransparency = 0.9200000166893005
+            if SearchableItems[1] then
+                SearchableItems[1].TabFrame.BackgroundTransparency = 0.999
+            end
+        else
+            Tab.BackgroundTransparency = 0.9990000128746033
+        end
+        Tab.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        Tab.BorderSizePixel = 0
+        Tab.LayoutOrder = CountTab
+        Tab.Size = UDim2.new(1, 0, 0, 30)
+        Tab.Name = "Tab"
+        Tab.Parent = ScrollTab
+
+        UICorner3.CornerRadius = UDim.new(0, 4)
+        UICorner3.Parent = Tab
+
+        TabButton.Font = Enum.Font.GothamBold
+        TabButton.Text = ""
+        TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TabButton.TextSize = 13
+        TabButton.TextXAlignment = Enum.TextXAlignment.Left
+        TabButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TabButton.BackgroundTransparency = 0.9990000128746033
+        TabButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        TabButton.BorderSizePixel = 0
+        TabButton.Size = UDim2.new(1, 0, 1, 0)
+        TabButton.Name = "TabButton"
+        TabButton.Parent = Tab
+
+        TabName.Font = Enum.Font.GothamBold
+        TabName.Text = tostring(TabConfig.Name)
+        TabName.TextColor3 = Color3.fromRGB(255, 255, 255)
+        TabName.TextSize = 13
+        TabName.TextXAlignment = Enum.TextXAlignment.Left
+        TabName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        TabName.BackgroundTransparency = 0.9990000128746033
+        TabName.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        TabName.BorderSizePixel = 0
+        TabName.Size = UDim2.new(1, -30, 1, 0)
+
+        local textOffset = 8
+        if TabConfig.Icon and TabConfig.Icon ~= "" then
+            local IconImg = Instance.new("ImageLabel")
+            IconImg.Size = UDim2.new(0, 16, 0, 16)
+            IconImg.Position = UDim2.new(0, 8, 0.5, -8)
+            IconImg.BackgroundTransparency = 1
+            IconImg.Name = "TabIcon"
+            IconImg.Parent = Tab
+            
+            local resolvedIcon = Icons[TabConfig.Icon] or TabConfig.Icon
+            if resolvedIcon ~= "" then
+                if not resolvedIcon:find("://") then
+                    IconImg.Image = "rbxassetid://" .. resolvedIcon
+                else
+                    IconImg.Image = resolvedIcon
+                end
+            end
+            textOffset = 30
+        end
+
+        TabName.Position = UDim2.new(0, textOffset, 0, 0)
+        TabName.Name = "TabName"
+        TabName.Parent = Tab
+
+        if CountTab == 0 then
+            local ChooseFrame = Instance.new("Frame");
+            ChooseFrame.BackgroundColor3 = GuiConfig.Color
+            ChooseFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            ChooseFrame.BorderSizePixel = 0
+            ChooseFrame.Position = UDim2.new(0, 2, 0, 9)
+            ChooseFrame.Size = UDim2.new(0, 1, 0, 12)
+            ChooseFrame.Name = "ChooseFrame"
+            ChooseFrame.Parent = Tab
+
+            UIStroke2.Color = GuiConfig.Color
+            UIStroke2.Thickness = 1.600000023841858
+            UIStroke2.Parent = ChooseFrame
+
+            UICorner4.Parent = ChooseFrame
+        elseif CountTab == 1 then
+            LayersPageLayout:JumpToIndex(1)
+            NameTab.Text = TabConfig.Name
+            CurrentTabName = TabConfig.Name:gsub("^%s*|%s*", "")
+            if SearchableItems[1] then
+                local firstTabFrame = SearchableItems[1].TabFrame
+                local ChooseFrame = firstTabFrame:FindFirstChild("ChooseFrame")
+                if ChooseFrame then
+                    ChooseFrame.Position = UDim2.new(0, 2, 0, 9 + (33 * CountTab))
+                end
+            end
+        end
+
+        TabButton.Activated:Connect(function()
+            CircleClick(TabButton, Mouse.X, Mouse.Y)
+            local targetTabName = TabConfig.Name:gsub("^%s*|%s*", "")
+
+            if targetTabName == "Favorited" then
+                local hasFavorites = false
+                for _, sData in ipairs(AllSectionsList) do
+                    if sData.IsFavorited then
+                        sData.SectionFrame.Parent = ScrolLayers
+                        sData.UpdateSize(true)
+                        hasFavorites = true
+                    end
+                end
+                if PlaceholderFrame then
+                    PlaceholderFrame.Visible = not hasFavorites
+                end
+                UpdateScrollSize()
+            else
+                if CurrentTabName == "Favorited" then
+                    for _, sData in ipairs(AllSectionsList) do
+                        if sData.IsFavorited then
+                            sData.SectionFrame.Parent = sData.OriginalParent
+                            sData.UpdateSize(true)
+                            if sData.UpdateOriginalScroll then
+                                sData.UpdateOriginalScroll()
+                            end
+                        end
+                    end
+                end
+            end
+            CurrentTabName = targetTabName
+
+            local FrameChoose
+            for a, s in ScrollTab:GetChildren() do
+                for i, v in s:GetChildren() do
+                    if v.Name == "ChooseFrame" then
+                        FrameChoose = v
+                        break
+                    end
+                end
+            end
+            if FrameChoose ~= nil and Tab.LayoutOrder ~= LayersPageLayout.CurrentPage.LayoutOrder then
+                for _, TabFrame in ScrollTab:GetChildren() do
+                    if TabFrame.Name == "Tab" then
+                        TweenService:Create(
+                            TabFrame,
+                            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.InOut),
+                            { BackgroundTransparency = 0.9990000128746033 }
+                        ):Play()
+                    end
+                end
+                TweenService:Create(
+                    Tab,
+                    TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.InOut),
+                    { BackgroundTransparency = 0.9200000166893005 }
+                ):Play()
+                TweenService:Create(
+                    FrameChoose,
+                    TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+                    { Position = UDim2.new(0, 2, 0, 9 + (33 * Tab.LayoutOrder)) }
+                ):Play()
+                LayersPageLayout:JumpToIndex(Tab.LayoutOrder)
+                task.wait(0.05)
+                NameTab.Text = TabConfig.Name
+                TweenService:Create(
+                    FrameChoose,
+                    TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+                    { Size = UDim2.new(0, 1, 0, 20) }
+                ):Play()
+                task.wait(0.2)
+                TweenService:Create(
+                    FrameChoose,
+                    TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
+                    { Size = UDim2.new(0, 1, 0, 12) }
+                ):Play()
+            end
+        end)
+        --// Section
+        local Sections = {}
+        local CountSection = 0
+        function Sections:AddSection(Title, AlwaysOpen)
+            local Title = Title or "Title"
+            local Section = Instance.new("Frame");
+            local UICorner1 = Instance.new("UICorner");
+            local UIGradient = Instance.new("UIGradient");
+
+            Section.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            Section.BackgroundTransparency = 0.9990000128746033
+            Section.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            Section.BorderSizePixel = 0
+            Section.LayoutOrder = CountSection
+            Section.ClipsDescendants = true
+            Section.LayoutOrder = 1
+            Section.Size = UDim2.new(1, 0, 0, 30)
+            Section.Name = "Section"
+            Section.Parent = ScrolLayers
+
+            local SectionReal = Instance.new("Frame");
+            local UICorner = Instance.new("UICorner");
+            local UIStroke = Instance.new("UIStroke");
+            local SectionButton = Instance.new("TextButton");
+            local FeatureFrame = Instance.new("Frame");
+            local FeatureImg = Instance.new("ImageLabel");
+            local SectionTitle = Instance.new("TextLabel");
+
+            SectionReal.AnchorPoint = Vector2.new(0.5, 0)
+            SectionReal.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            SectionReal.BackgroundTransparency = 1
+            SectionReal.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            SectionReal.BorderSizePixel = 0
+            SectionReal.LayoutOrder = 1
+            SectionReal.Position = UDim2.new(0.5, 0, 0, 0)
+            SectionReal.Size = UDim2.new(1, 1, 0, 30)
+            SectionReal.Name = "SectionReal"
+            SectionReal.Parent = Section
+
+            UICorner.CornerRadius = UDim.new(0, 4)
+            UICorner.Parent = SectionReal
+
+            SectionButton.Font = Enum.Font.SourceSans
+            SectionButton.Text = ""
+            SectionButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+            SectionButton.TextSize = 14
+            SectionButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            SectionButton.BackgroundTransparency = 0.9990000128746033
+            SectionButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            SectionButton.BorderSizePixel = 0
+            SectionButton.Size = UDim2.new(1, 0, 1, 0)
+            SectionButton.Name = "SectionButton"
+            SectionButton.Parent = SectionReal
+
+            FeatureFrame.AnchorPoint = Vector2.new(1, 0.5)
+            FeatureFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+            FeatureFrame.BackgroundTransparency = 0.9990000128746033
+            FeatureFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            FeatureFrame.BorderSizePixel = 0
+            FeatureFrame.Position = UDim2.new(1, -5, 0.5, 0)
+            FeatureFrame.Size = UDim2.new(0, 20, 0, 20)
+            FeatureFrame.Name = "FeatureFrame"
+            FeatureFrame.Parent = SectionReal
+
+            FeatureImg.Image = "rbxassetid://16851841101"
+            FeatureImg.AnchorPoint = Vector2.new(0.5, 0.5)
+            FeatureImg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            FeatureImg.BackgroundTransparency = 0.9990000128746033
+            FeatureImg.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            FeatureImg.BorderSizePixel = 0
+            FeatureImg.Position = UDim2.new(0.5, 0, 0.5, 0)
+            FeatureImg.Rotation = -90
+            FeatureImg.Size = UDim2.new(1, 6, 1, 6)
+            FeatureImg.Name = "FeatureImg"
+            FeatureImg.Parent = FeatureFrame
+
+            SectionTitle.Font = Enum.Font.GothamBold
+            SectionTitle.Text = Title
+            SectionTitle.TextColor3 = Color3.fromRGB(230.77499270439148, 230.77499270439148, 230.77499270439148)
+            SectionTitle.TextSize = 13
+            SectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+            SectionTitle.TextYAlignment = Enum.TextYAlignment.Top
+            SectionTitle.AnchorPoint = Vector2.new(0, 0.5)
+            SectionTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            SectionTitle.BackgroundTransparency = 0.9990000128746033
+            SectionTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            SectionTitle.BorderSizePixel = 0
+            SectionTitle.Position = UDim2.new(0, 30, 0.5, 0)
+            SectionTitle.Size = UDim2.new(1, -70, 0, 13)
+            SectionTitle.Name = "SectionTitle"
+            SectionTitle.Parent = SectionReal
+
+            local favKey = TabConfig.Name:gsub("^%s*|%s*", "") .. "/" .. Title
+            local isFav = FavoritesData[favKey] == true
+
+            local StarBtn = Instance.new("ImageButton")
+            StarBtn.Name = "StarBtn"
+            StarBtn.Size = UDim2.new(0, 14, 0, 14)
+            StarBtn.Position = UDim2.new(0, 10, 0.5, -7)
+            StarBtn.BackgroundTransparency = 1
+            StarBtn.ZIndex = 10
+            StarBtn.Parent = SectionReal
+
+            local function updateStarVisuals()
+                if isFav then
+                    StarBtn.Image = "rbxassetid://107005941750079"
+                    StarBtn.ImageColor3 = Color3.fromRGB(255, 200, 0)
+                    StarBtn.ImageTransparency = 0
+                else
+                    StarBtn.Image = "rbxassetid://10734966248"
+                    StarBtn.ImageColor3 = Color3.fromRGB(200, 200, 200)
+                    StarBtn.ImageTransparency = 0.5
+                end
+            end
+            updateStarVisuals()
+
+            --// Section Add
+            local SectionAdd = Instance.new("Frame");
+            local UICorner8 = Instance.new("UICorner");
+            local UIListLayout2 = Instance.new("UIListLayout");
+
+            SectionAdd.AnchorPoint = Vector2.new(0.5, 0)
+            SectionAdd.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            SectionAdd.BackgroundTransparency = 0.9990000128746033
+            SectionAdd.BorderColor3 = Color3.fromRGB(0, 0, 0)
+            SectionAdd.BorderSizePixel = 0
+            SectionAdd.ClipsDescendants = true
+            SectionAdd.LayoutOrder = 1
+            SectionAdd.Position = UDim2.new(0.5, 0, 0, 32)
+            SectionAdd.Size = UDim2.new(1, 0, 0, 100)
+            SectionAdd.Name = "SectionAdd"
+            SectionAdd.Parent = Section
+
+            UICorner8.CornerRadius = UDim.new(0, 2)
+            UICorner8.Parent = SectionAdd
+
+            UIListLayout2.Padding = UDim.new(0, 3)
+            UIListLayout2.SortOrder = Enum.SortOrder.LayoutOrder
+            UIListLayout2.Parent = SectionAdd
+
+            local OpenSection = false
+
+            local function UpdateSizeScroll()
+                UpdateScrollSize()
+            end
+
+            local mySectionData
+
+            local function UpdateSizeSection(instant)
+                if OpenSection or (mySectionData and mySectionData.ForceOpen) then
+                    local SectionSizeYWitdh = 38
+                    for _, v in SectionAdd:GetChildren() do
+                        if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
+                            SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
+                        end
+                    end
+                    if instant == true then
+                        if FeatureFrame and FeatureFrame.Parent then
+                            FeatureFrame.Rotation = 90
+                        end
+                        Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
+                        SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
+                        UpdateScrollSize()
+                        if Section.Parent ~= ScrolLayers then
+                            UpdateScrollFrameSize(Section.Parent)
+                        end
+                    else
+                        if FeatureFrame and FeatureFrame.Parent then
+                            TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
+                        end
+                        TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) })
+                            :Play()
+                        TweenService:Create(SectionAdd, TweenInfo.new(0.5),
+                            { Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38) }):Play()
+                        task.spawn(function()
+                            task.wait(0.5)
+                            UpdateScrollSize()
+                            if Section.Parent ~= ScrolLayers then
+                                UpdateScrollFrameSize(Section.Parent)
+                            end
+                        end)
+                    end
+                else
+                    if instant == true then
+                        if FeatureFrame and FeatureFrame.Parent then
+                            FeatureFrame.Rotation = 0
+                        end
+                        Section.Size = UDim2.new(1, 1, 0, 30)
+                        UpdateScrollSize()
+                        if Section.Parent ~= ScrolLayers then
+                            UpdateScrollFrameSize(Section.Parent)
+                        end
+                    else
+                        if FeatureFrame and FeatureFrame.Parent then
+                            TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
+                        end
+                        TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
+                        task.spawn(function()
+                            task.wait(0.5)
+                            UpdateScrollSize()
+                            if Section.Parent ~= ScrolLayers then
+                                UpdateScrollFrameSize(Section.Parent)
+                            end
+                        end)
+                    end
+                end
+            end
+
+            mySectionData = {
+                SectionFrame = Section,
+                SectionTitle = Title,
+                Items = {},
+                UpdateSize = UpdateSizeSection,
+                ForceOpen = false,
+                OriginalParent = ScrolLayers,
+                IsFavorited = isFav,
+                TabName = TabConfig.Name:gsub("^%s*|%s*", ""),
+                UpdateOriginalScroll = UpdateScrollSize
+            }
+            table.insert(myTabData.Sections, mySectionData)
+            table.insert(AllSectionsList, mySectionData)
+
+            StarBtn.Activated:Connect(function()
+                isFav = not isFav
+                FavoritesData[favKey] = isFav or nil
+                mySectionData.IsFavorited = isFav
+                updateStarVisuals()
+                SaveFavorites()
+                
+                if CurrentTabName == "Favorited" then
+                    if not isFav then
+                        Section.Parent = ScrolLayers
+                        UpdateSizeSection(true)
+                        if FavoritedUpdateScroll then
+                            FavoritedUpdateScroll()
+                        end
+                    end
+                end
+            end)
+
+            if AlwaysOpen == true then
+                SectionButton:Destroy()
+                FeatureFrame:Destroy()
+                OpenSection = true
+                UpdateSizeSection()
+            elseif AlwaysOpen == false then
+                OpenSection = true
+                UpdateSizeSection()
+            else
+                OpenSection = false
+            end
+
+            if AlwaysOpen ~= true then
+                SectionButton.Activated:Connect(function()
+                    CircleClick(SectionButton, Mouse.X, Mouse.Y)
+                    if OpenSection then
+                        TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
+                        TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
+                        OpenSection = false
+                        task.wait(0.5)
+                        UpdateScrollSize()
+                    else
+                        OpenSection = true
+                        UpdateSizeSection()
+                    end
+                end)
+            end
+
+            if AlwaysOpen == true or AlwaysOpen == false then
+                OpenSection = true
                 local SectionSizeYWitdh = 38
                 for _, v in SectionAdd:GetChildren() do
                     if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
                         SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                     end
                 end
-                if instant == true then
-                    if FeatureFrame and FeatureFrame.Parent then
-                        FeatureFrame.Rotation = 90
-                    end
-                    Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
-                    SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
-                    UpdateScrollFrameSize(ScrolLayers)
-                    if Section.Parent ~= ScrolLayers then
-                        UpdateScrollFrameSize(Section.Parent)
-                    end
-                else
-                    if FeatureFrame and FeatureFrame.Parent then
-                        TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
-                    end
-                    TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) })
-                        :Play()
-                    TweenService:Create(SectionAdd, TweenInfo.new(0.5),
-                        { Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38) }):Play()
-                    task.spawn(function()
-                        task.wait(0.5)
-                        UpdateScrollFrameSize(ScrolLayers)
-                        if Section.Parent ~= ScrolLayers then
-                            UpdateScrollFrameSize(Section.Parent)
-                        end
-                    end)
+                if FeatureFrame and FeatureFrame.Parent then
+                    FeatureFrame.Rotation = 90
                 end
-            else
-                if instant == true then
-                    if FeatureFrame and FeatureFrame.Parent then
-                        FeatureFrame.Rotation = 0
-                    end
-                    Section.Size = UDim2.new(1, 1, 0, 30)
-                    UpdateScrollFrameSize(ScrolLayers)
-                    if Section.Parent ~= ScrolLayers then
-                        UpdateScrollFrameSize(Section.Parent)
-                    end
-                else
-                    if FeatureFrame and FeatureFrame.Parent then
-                        TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
-                    end
-                    TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
-                    task.spawn(function()
-                        task.wait(0.5)
-                        UpdateScrollFrameSize(ScrolLayers)
-                        if Section.Parent ~= ScrolLayers then
-                            UpdateScrollFrameSize(Section.Parent)
-                        end
-                    end)
-                end
+                Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
+                SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
+                UpdateScrollSize()
             end
-        end
 
-        mySectionData = {
-            SectionFrame = Section,
-            SectionTitle = Title,
-            Items = {},
-            UpdateSize = UpdateSizeSection,
-            ForceOpen = false,
-            OriginalParent = ScrolLayers,
-            IsFavorited = isFav,
-            TabName = TabConfig.Name:gsub("^%%s*|%%s*", ""),
-            UpdateOriginalScroll = UpdateSizeScroll
-        }
-        table.insert(myTabData.Sections, mySectionData)
-        table.insert(AllSectionsList, mySectionData)
-        
-        virtualSection.RealSectionData = mySectionData
+            SectionAdd.ChildAdded:Connect(UpdateSizeSection)
+            SectionAdd.ChildRemoved:Connect(UpdateSizeSection)
 
-        StarBtn.Activated:Connect(function()
-            isFav = not isFav
-            FavoritesData[favKey] = isFav or nil
-            mySectionData.IsFavorited = isFav
-            virtualSection.IsFavorited = isFav
-            updateStarVisuals()
-            SaveFavorites()
-            
-            if CurrentTabName == "Favorited" then
-                if not isFav then
-                    Section.Parent = ScrolLayers
-                    UpdateSizeSection(true)
-                    if FavoritedUpdateScroll then
-                        FavoritedUpdateScroll()
-                    end
-                end
+            local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
+            if layout then
+                layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+                    ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+                end)
             end
-        end)
 
-        if AlwaysOpen == true then
-            SectionButton:Destroy()
-            FeatureFrame:Destroy()
-            OpenSection = true
-            UpdateSizeSection()
-        elseif AlwaysOpen == false then
-            OpenSection = true
-            UpdateSizeSection()
-        else
-            OpenSection = false
-        end
+            local Items = {}
+            local CountItem = 0
 
-        if AlwaysOpen ~= true then
-            SectionButton.Activated:Connect(function()
-                CircleClick(SectionButton, Mouse.X, Mouse.Y)
-                if OpenSection then
-                    TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
-                    TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
-                    OpenSection = false
-                    task.wait(0.5)
-                    UpdateSizeScroll()
-                else
-                    OpenSection = true
-                    UpdateSizeSection()
-                end
-            end)
-        end
-
-        if AlwaysOpen == true or AlwaysOpen == false then
-            OpenSection = true
-            local SectionSizeYWitdh = 38
-            for _, v in SectionAdd:GetChildren() do
-                if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
-                    SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
-                end
-            end
-            if FeatureFrame and FeatureFrame.Parent then
-                FeatureFrame.Rotation = 90
-            end
-            Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
-            SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
-            UpdateSizeScroll()
-        end
-
-        SectionAdd.ChildAdded:Connect(UpdateSizeSection)
-        SectionAdd.ChildRemoved:Connect(UpdateSizeSection)
-
-        local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
-        if layout then
-            layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
-            end)
-        end
-
-        local Items = {}
-        local CountItem = 0
-
-        -- Real widget implementations inserted here:
-        function Items:AddParagraph(ParagraphConfig)
+            function Items:AddParagraph(ParagraphConfig)
                 local ParagraphConfig = ParagraphConfig or {}
                 ParagraphConfig.Title = ParagraphConfig.Title or "Title"
                 ParagraphConfig.Content = ParagraphConfig.Content or "Content"
@@ -3088,599 +3257,9 @@ function ZeroImpact:Window(GuiConfig)
                 return SubSection
             end
 
-
-
-        return Items
-    end
-
-    local function initializeTab(ScrolLayers)
-        local lazyTab = lazyTabs[ScrolLayers]
-        if not lazyTab or lazyTab.Initialized then return end
-        lazyTab.Initialized = true
-
-        for _, virtualSection in ipairs(lazyTab.Sections) do
-            local physicalItems = createSectionPhysical(ScrolLayers, virtualSection.Title, virtualSection.AlwaysOpen, lazyTab.TabConfig, lazyTab.myTabData, virtualSection)
-            virtualSection.RealItems = physicalItems
-
-            for _, buildWidget in ipairs(virtualSection.Widgets) do
-                buildWidget()
-            end
-        end
-    end
-
-    function Tabs:AddTab(TabConfig)
-        local TabConfig = TabConfig or {}
-        TabConfig.Name = TabConfig.Name or "Tab"
-        TabConfig.Icon = TabConfig.Icon or ""
-
-        local ScrolLayers = Instance.new("ScrollingFrame");
-        local currentLazyTab = {
-            Initialized = false,
-            OriginalTabName = TabConfig.Name:gsub("^%s*|%s*", ""),
-            Sections = {},
-            TabConfig = TabConfig,
-            myTabData = nil -- Will be set below
-        }
-        lazyTabs[ScrolLayers] = currentLazyTab
-
-        local UIListLayout1 = Instance.new("UIListLayout");
-
-        local function UpdateScrollSize()
-            UpdateScrollFrameSize(ScrolLayers)
-        end
-
-        ScrolLayers.ScrollBarImageColor3 = GuiConfig.Color
-        ScrolLayers.ScrollBarThickness = 3
-        ScrolLayers.Active = true
-        ScrolLayers.LayoutOrder = CountTab
-        ScrolLayers.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        ScrolLayers.BackgroundTransparency = 0.9990000128746033
-        ScrolLayers.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        ScrolLayers.BorderSizePixel = 0
-        ScrolLayers.Size = UDim2.new(1, 0, 1, 0)
-        ScrolLayers.Name = "ScrolLayers"
-        ScrolLayers.Parent = LayersFolder
-
-        UIListLayout1.Padding = UDim.new(0, 3)
-        UIListLayout1.SortOrder = Enum.SortOrder.LayoutOrder
-        UIListLayout1.Parent = ScrolLayers
-
-        local Tab = Instance.new("Frame");
-        local UICorner3 = Instance.new("UICorner");
-        local TabButton = Instance.new("TextButton");
-        local TabName = Instance.new("TextLabel")
-        local UIStroke2 = Instance.new("UIStroke");
-        local UICorner4 = Instance.new("UICorner");
-
-        local myTabData = {
-            TabFrame = Tab,
-            TabName = TabConfig.Name:gsub("^%s*|%s*", ""),
-            Sections = {},
-            UpdateScroll = UpdateScrollSize,
-            ScrollLayers = ScrolLayers
-        }
-        currentLazyTab.myTabData = myTabData
-        table.insert(SearchableItems, myTabData)
-
-        Tab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        if CountTab == 1 then
-            Tab.BackgroundTransparency = 0.9200000166893005
-            if SearchableItems[1] then
-                SearchableItems[1].TabFrame.BackgroundTransparency = 0.999
-            end
-        else
-            Tab.BackgroundTransparency = 0.9990000128746033
-        end
-        Tab.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        Tab.BorderSizePixel = 0
-        Tab.LayoutOrder = CountTab
-        Tab.Size = UDim2.new(1, 0, 0, 30)
-        Tab.Name = "Tab"
-        Tab.Parent = ScrollTab
-
-        UICorner3.CornerRadius = UDim.new(0, 4)
-        UICorner3.Parent = Tab
-
-        TabButton.Font = Enum.Font.GothamBold
-        TabButton.Text = ""
-        TabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TabButton.TextSize = 13
-        TabButton.TextXAlignment = Enum.TextXAlignment.Left
-        TabButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        TabButton.BackgroundTransparency = 0.9990000128746033
-        TabButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        TabButton.BorderSizePixel = 0
-        TabButton.Size = UDim2.new(1, 0, 1, 0)
-        TabButton.Name = "TabButton"
-        TabButton.Parent = Tab
-
-        TabName.Font = Enum.Font.GothamBold
-        TabName.Text = tostring(TabConfig.Name)
-        TabName.TextColor3 = Color3.fromRGB(255, 255, 255)
-        TabName.TextSize = 13
-        TabName.TextXAlignment = Enum.TextXAlignment.Left
-        TabName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        TabName.BackgroundTransparency = 0.9990000128746033
-        TabName.BorderColor3 = Color3.fromRGB(0, 0, 0)
-        TabName.BorderSizePixel = 0
-        TabName.Size = UDim2.new(1, -30, 1, 0)
-
-        local textOffset = 8
-        if TabConfig.Icon and TabConfig.Icon ~= "" then
-            local IconImg = Instance.new("ImageLabel")
-            IconImg.Size = UDim2.new(0, 16, 0, 16)
-            IconImg.Position = UDim2.new(0, 8, 0.5, -8)
-            IconImg.BackgroundTransparency = 1
-            IconImg.Name = "TabIcon"
-            IconImg.Parent = Tab
-            
-            local resolvedIcon = Icons[TabConfig.Icon] or TabConfig.Icon
-            if resolvedIcon ~= "" then
-                if not resolvedIcon:find("://") then
-                    IconImg.Image = "rbxassetid://" .. resolvedIcon
-                else
-                    IconImg.Image = resolvedIcon
-                end
-            end
-            textOffset = 30
-        end
-
-        TabName.Position = UDim2.new(0, textOffset, 0, 0)
-        TabName.Name = "TabName"
-        TabName.Parent = Tab
-
-        if CountTab == 0 then
-            local ChooseFrame = Instance.new("Frame");
-            ChooseFrame.BackgroundColor3 = GuiConfig.Color
-            ChooseFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-            ChooseFrame.BorderSizePixel = 0
-            ChooseFrame.Position = UDim2.new(0, 2, 0, 9)
-            ChooseFrame.Size = UDim2.new(0, 1, 0, 12)
-            ChooseFrame.Name = "ChooseFrame"
-            ChooseFrame.Parent = Tab
-
-            UIStroke2.Color = GuiConfig.Color
-            UIStroke2.Thickness = 1.600000023841858
-            UIStroke2.Parent = ChooseFrame
-
-            UICorner4.Parent = ChooseFrame
-        elseif CountTab == 1 then
-            LayersPageLayout:JumpToIndex(1)
-            NameTab.Text = TabConfig.Name
-            CurrentTabName = TabConfig.Name:gsub("^%s*|%s*", "")
-            if SearchableItems[1] then
-                local firstTabFrame = SearchableItems[1].TabFrame
-                local ChooseFrame = firstTabFrame:FindFirstChild("ChooseFrame")
-                if ChooseFrame then
-                    ChooseFrame.Position = UDim2.new(0, 2, 0, 9 + (33 * CountTab))
-                end
-            end
-        end
-
-        TabButton.Activated:Connect(function()
-            initializeTab(ScrolLayers)
-            CircleClick(TabButton, Mouse.X, Mouse.Y)
-            local targetTabName = TabConfig.Name:gsub("^%s*|%s*", "")
-
-            if targetTabName == "Favorited" then
-                for scrolLayers, lazyTab in pairs(lazyTabs) do
-                    if not lazyTab.Initialized then
-                        local needsInit = false
-                        for _, vSection in ipairs(lazyTab.Sections) do
-                            if vSection.IsFavorited then
-                                needsInit = true
-                                break
-                            end
-                        end
-                        if needsInit then
-                            initializeTab(scrolLayers)
-                        end
-                    end
-                end
-                local hasFavorites = false
-                for _, sData in ipairs(AllSectionsList) do
-                    if sData.IsFavorited then
-                        sData.SectionFrame.Parent = ScrolLayers
-                        sData.UpdateSize(true)
-                        hasFavorites = true
-                    end
-                end
-                if PlaceholderFrame then
-                    PlaceholderFrame.Visible = not hasFavorites
-                end
-                UpdateScrollSize()
-            else
-                if CurrentTabName == "Favorited" then
-                    for _, sData in ipairs(AllSectionsList) do
-                        if sData.IsFavorited then
-                            sData.SectionFrame.Parent = sData.OriginalParent
-                            sData.UpdateSize(true)
-                            if sData.UpdateOriginalScroll then
-                                sData.UpdateOriginalScroll()
-                            end
-                        end
-                    end
-                end
-            end
-            CurrentTabName = targetTabName
-
-            local FrameChoose
-            for a, s in ScrollTab:GetChildren() do
-                for i, v in s:GetChildren() do
-                    if v.Name == "ChooseFrame" then
-                        FrameChoose = v
-                        break
-                    end
-                end
-            end
-            if FrameChoose ~= nil and Tab.LayoutOrder ~= LayersPageLayout.CurrentPage.LayoutOrder then
-                for _, TabFrame in ScrollTab:GetChildren() do
-                    if TabFrame.Name == "Tab" then
-                        TweenService:Create(
-                            TabFrame,
-                            TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.InOut),
-                            { BackgroundTransparency = 0.9990000128746033 }
-                        ):Play()
-                    end
-                end
-                TweenService:Create(
-                    Tab,
-                    TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.InOut),
-                    { BackgroundTransparency = 0.9200000166893005 }
-                ):Play()
-                TweenService:Create(
-                    FrameChoose,
-                    TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-                    { Position = UDim2.new(0, 2, 0, 9 + (33 * Tab.LayoutOrder)) }
-                ):Play()
-                LayersPageLayout:JumpToIndex(Tab.LayoutOrder)
-                task.wait(0.05)
-                NameTab.Text = TabConfig.Name
-                TweenService:Create(
-                    FrameChoose,
-                    TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-                    { Size = UDim2.new(0, 1, 0, 20) }
-                ):Play()
-                task.wait(0.2)
-                TweenService:Create(
-                    FrameChoose,
-                    TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-                    { Size = UDim2.new(0, 1, 0, 12) }
-                ):Play()
-            end
-        end)
-        --// Section
-        local Sections = {}
-        local CountSection = 0
-        function Sections:AddSection(Title, AlwaysOpen)
-            local favKey = TabConfig.Name:gsub("^%s*|%s*", "") .. "/" .. Title
-            local isFav = FavoritesData[favKey] == true
-
-            local virtualSection = {
-                Title = Title,
-                AlwaysOpen = AlwaysOpen,
-                Widgets = {},      -- builder functions queue
-                WidgetsData = {},  -- metadata for search
-                IsFavorited = isFav,
-                LayoutOrder = CountSection,
-                ProxySection = {},
-                RealSectionData = nil,
-                RealItems = nil
-            }
-            table.insert(currentLazyTab.Sections, virtualSection)
-
-            local ProxySection = {}
-            virtualSection.ProxySection = ProxySection
-
-            function ProxySection:AddParagraph(ParagraphConfig)
-                local ParagraphConfig = ParagraphConfig or {}
-                local widgetProxy = { Title = ParagraphConfig.Title or "Title", Content = ParagraphConfig.Content or "Content", RealWidget = nil }
-                table.insert(virtualSection.WidgetsData, { Title = widgetProxy.Title, Type = "Paragraph" })
-
-                function widgetProxy:SetContent(content)
-                    widgetProxy.Content = content
-                    if widgetProxy.RealWidget then
-                        widgetProxy.RealWidget:SetContent(content)
-                    end
-                end
-
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddParagraph({
-                        Title = ParagraphConfig.Title,
-                        Content = widgetProxy.Content,
-                        Icon = ParagraphConfig.Icon,
-                        ButtonText = ParagraphConfig.ButtonText,
-                        ButtonCallback = ParagraphConfig.ButtonCallback
-                    })
-                    widgetProxy.RealWidget = real
-                    widgetProxy.Frame = real.Frame
-                end)
-
-                return widgetProxy
-            end
-
-            function ProxySection:AddPanel(PanelConfig)
-                local PanelConfig = PanelConfig or {}
-                PanelConfig.Title = PanelConfig.Title or "Title"
-                local configKey = "Panel_" .. PanelConfig.Title
-                
-                local widgetProxy = { Value = PanelConfig.Default or "", RealWidget = nil }
-                table.insert(virtualSection.WidgetsData, { Title = PanelConfig.Title, Type = "Panel" })
-
-                function widgetProxy:GetInput()
-                    if widgetProxy.RealWidget then
-                        return widgetProxy.RealWidget:GetInput()
-                    end
-                    return widgetProxy.Value
-                end
-
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddPanel({
-                        Title = PanelConfig.Title,
-                        Content = PanelConfig.Content,
-                        Placeholder = PanelConfig.Placeholder,
-                        Default = widgetProxy.Value,
-                        Button = PanelConfig.Button or PanelConfig.ButtonText,
-                        Callback = function(txt)
-                            widgetProxy.Value = txt
-                            local cb = PanelConfig.Callback or PanelConfig.ButtonCallback
-                            if cb then cb(txt) end
-                        end,
-                        SubButton = PanelConfig.SubButton or PanelConfig.SubButtonText,
-                        SubCallback = function(txt)
-                            widgetProxy.Value = txt
-                            local cb = PanelConfig.SubCallback or PanelConfig.SubButtonCallback
-                            if cb then cb(txt) end
-                        end
-                    })
-                    widgetProxy.RealWidget = real
-                end)
-
-                Elements[configKey] = widgetProxy
-                return widgetProxy
-            end
-
-            function ProxySection:AddButton(ButtonConfig)
-                local ButtonConfig = ButtonConfig or {}
-                local widgetProxy = { RealWidget = nil }
-                table.insert(virtualSection.WidgetsData, { Title = ButtonConfig.Title or "Confirm", Type = "Button" })
-
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddButton({
-                        Title = ButtonConfig.Title,
-                        Callback = ButtonConfig.Callback,
-                        SubTitle = ButtonConfig.SubTitle,
-                        SubCallback = ButtonConfig.SubCallback
-                    })
-                    widgetProxy.RealWidget = real
-                end)
-
-                return widgetProxy
-            end
-
-            function ProxySection:AddToggle(ToggleConfig)
-                local ToggleConfig = ToggleConfig or {}
-                ToggleConfig.Title = ToggleConfig.Title or "Toggle"
-                local configKey = "Toggle_" .. ToggleConfig.Title
-                
-                local widgetProxy = { Value = ToggleConfig.Default or false, RealWidget = nil }
-                table.insert(virtualSection.WidgetsData, { Title = ToggleConfig.Title, Type = "Toggle" })
-
-                function widgetProxy:Set(Value, skipCallback)
-                    widgetProxy.Value = Value
-                    if widgetProxy.RealWidget then
-                        widgetProxy.RealWidget:Set(Value, skipCallback)
-                    else
-                        if not skipCallback and ToggleConfig.Callback then
-                            ToggleConfig.Callback(Value)
-                        end
-                    end
-                end
-
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddToggle({
-                        Title = ToggleConfig.Title,
-                        Content = ToggleConfig.Content,
-                        Default = widgetProxy.Value,
-                        Callback = function(v)
-                            widgetProxy.Value = v
-                            if ToggleConfig.Callback then
-                                ToggleConfig.Callback(v)
-                            end
-                        end
-                    })
-                    widgetProxy.RealWidget = real
-                end)
-
-                Elements[configKey] = widgetProxy
-                return widgetProxy
-            end
-
-            function ProxySection:AddSlider(SliderConfig)
-                local SliderConfig = SliderConfig or {}
-                SliderConfig.Title = SliderConfig.Title or "Slider"
-                local configKey = "Slider_" .. SliderConfig.Title
-                
-                local widgetProxy = { Value = SliderConfig.Default or SliderConfig.Min or 0, RealWidget = nil }
-                table.insert(virtualSection.WidgetsData, { Title = SliderConfig.Title, Type = "Slider" })
-
-                function widgetProxy:Set(Value)
-                    widgetProxy.Value = Value
-                    if widgetProxy.RealWidget then
-                        widgetProxy.RealWidget:Set(Value)
-                    else
-                        if SliderConfig.Callback then
-                            SliderConfig.Callback(Value)
-                        end
-                    end
-                end
-
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddSlider({
-                        Title = SliderConfig.Title,
-                        Content = SliderConfig.Content,
-                        Min = SliderConfig.Min,
-                        Max = SliderConfig.Max,
-                        Default = widgetProxy.Value,
-                        Callback = function(v)
-                            widgetProxy.Value = v
-                            if SliderConfig.Callback then
-                                SliderConfig.Callback(v)
-                            end
-                        end
-                    })
-                    widgetProxy.RealWidget = real
-                end)
-
-                Elements[configKey] = widgetProxy
-                return widgetProxy
-            end
-
-            function ProxySection:AddInput(InputConfig)
-                local InputConfig = InputConfig or {}
-                InputConfig.Title = InputConfig.Title or "Input"
-                local configKey = "Input_" .. InputConfig.Title
-                
-                local widgetProxy = { Value = InputConfig.Default or "", RealWidget = nil }
-                table.insert(virtualSection.WidgetsData, { Title = InputConfig.Title, Type = "Input" })
-
-                function widgetProxy:Set(Value)
-                    widgetProxy.Value = Value
-                    if widgetProxy.RealWidget then
-                        widgetProxy.RealWidget:Set(Value)
-                    else
-                        if InputConfig.Callback then
-                            InputConfig.Callback(Value)
-                        end
-                    end
-                end
-
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddInput({
-                        Title = InputConfig.Title,
-                        Content = InputConfig.Content,
-                        Placeholder = InputConfig.Placeholder,
-                        Numeric = InputConfig.Numeric,
-                        Finished = InputConfig.Finished,
-                        Default = widgetProxy.Value,
-                        Callback = function(v)
-                            widgetProxy.Value = v
-                            if InputConfig.Callback then
-                                InputConfig.Callback(v)
-                            end
-                        end
-                    })
-                    widgetProxy.RealWidget = real
-                end)
-
-                Elements[configKey] = widgetProxy
-                return widgetProxy
-            end
-
-            function ProxySection:AddDropdown(DropdownConfig)
-                local DropdownConfig = DropdownConfig or {}
-                DropdownConfig.Title = DropdownConfig.Title or "Dropdown"
-                local configKey = "Dropdown_" .. DropdownConfig.Title
-                
-                local widgetProxy = {
-                    Value = DropdownConfig.Default or (DropdownConfig.Multi and {} or nil),
-                    Options = DropdownConfig.Options or {},
-                    RealWidget = nil
-                }
-                table.insert(virtualSection.WidgetsData, { Title = DropdownConfig.Title, Type = "Dropdown" })
-
-                function widgetProxy:Clear()
-                    if widgetProxy.RealWidget then
-                        widgetProxy.RealWidget:Clear()
-                    else
-                        widgetProxy.Value = DropdownConfig.Multi and {} or nil
-                        widgetProxy.Options = {}
-                    end
-                end
-
-                function widgetProxy:AddOption(option)
-                    if widgetProxy.RealWidget then
-                        widgetProxy.RealWidget:AddOption(option)
-                    else
-                        table.insert(widgetProxy.Options, option)
-                    end
-                end
-
-                function widgetProxy:Set(Value)
-                    widgetProxy.Value = Value
-                    if widgetProxy.RealWidget then
-                        widgetProxy.RealWidget:Set(Value)
-                    else
-                        if DropdownConfig.Callback then
-                            DropdownConfig.Callback(Value)
-                        end
-                    end
-                end
-
-                function widgetProxy:SetValue(val)
-                    widgetProxy:Set(val)
-                end
-
-                function widgetProxy:GetValue()
-                    return widgetProxy.Value
-                end
-
-                function widgetProxy:SetValues(newList, selecting)
-                    if widgetProxy.RealWidget then
-                        widgetProxy.RealWidget:SetValues(newList, selecting)
-                    else
-                        widgetProxy.Options = newList or {}
-                        widgetProxy.Value = selecting or (DropdownConfig.Multi and {} or nil)
-                        if DropdownConfig.Callback then
-                            DropdownConfig.Callback(widgetProxy.Value)
-                        end
-                    end
-                end
-
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddDropdown({
-                        Title = DropdownConfig.Title,
-                        Content = DropdownConfig.Content,
-                        Options = widgetProxy.Options,
-                        Default = widgetProxy.Value,
-                        Multi = DropdownConfig.Multi,
-                        AllowNull = DropdownConfig.AllowNull,
-                        Callback = function(v)
-                            widgetProxy.Value = v
-                            if DropdownConfig.Callback then
-                                DropdownConfig.Callback(v)
-                            end
-                        end
-                    })
-                    widgetProxy.RealWidget = real
-                end)
-
-                Elements[configKey] = widgetProxy
-                return widgetProxy
-            end
-
-            function ProxySection:AddDivider()
-                local widgetProxy = { RealWidget = nil }
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddDivider()
-                    widgetProxy.RealWidget = real
-                end)
-                return widgetProxy
-            end
-
-            function ProxySection:AddSubSection(title)
-                local widgetProxy = { RealWidget = nil }
-                table.insert(virtualSection.Widgets, function()
-                    local real = virtualSection.RealItems:AddSubSection(title)
-                    widgetProxy.RealWidget = real
-                end)
-                return widgetProxy
-            end
-
             CountSection = CountSection + 1
-            return ProxySection
+            return Items
         end
-
 
         CountTab = CountTab + 1
         local safeName = TabConfig.Name:gsub("%s+", "_")
@@ -3722,36 +3301,6 @@ function ZeroImpact:Window(GuiConfig)
         PlaceholderLabel.TextWrapped = true
         PlaceholderLabel.Parent = PlaceholderFrame
     end
-
-    task.defer(function()
-        -- Initialize the active tab first (LayoutOrder = 1)
-        local activeTabScrolLayers = nil
-        for _, tabData in ipairs(SearchableItems) do
-            if tabData.ScrollLayers.LayoutOrder == 1 then
-                activeTabScrolLayers = tabData.ScrollLayers
-                break
-            end
-        end
-        if activeTabScrolLayers then
-            initializeTab(activeTabScrolLayers)
-        end
-        
-        -- Initialize any tab containing favorited sections
-        for scrolLayers, lazyTab in pairs(lazyTabs) do
-            if not lazyTab.Initialized then
-                local needsInit = false
-                for _, vSection in ipairs(lazyTab.Sections) do
-                    if vSection.IsFavorited then
-                        needsInit = true
-                        break
-                    end
-                end
-                if needsInit then
-                    initializeTab(scrolLayers)
-                end
-            end
-        end
-    end)
 
     return Tabs
 end
