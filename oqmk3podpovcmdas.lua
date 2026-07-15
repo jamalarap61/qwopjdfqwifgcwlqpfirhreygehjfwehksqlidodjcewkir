@@ -1,4 +1,4 @@
---V24
+--V25
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -1405,6 +1405,18 @@ function ZeroImpact:Window(GuiConfig)
     local Tabs = {}
     local CountTab = 0
     local CountDropdown = 0
+    local function UpdateScrollFrameSize(scrollFrame)
+        if not scrollFrame or not scrollFrame:IsA("ScrollingFrame") then return end
+        local OffsetY = 0
+        for _, child in scrollFrame:GetChildren() do
+            if not child:IsA("UIListLayout") and not child:IsA("UICorner") and child.Visible then
+                local sizeY = child.Size.Y.Offset
+                OffsetY = OffsetY + 3 + sizeY
+            end
+        end
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+    end
+
     function Tabs:AddTab(TabConfig)
         local TabConfig = TabConfig or {}
         TabConfig.Name = TabConfig.Name or "Tab"
@@ -1414,17 +1426,11 @@ function ZeroImpact:Window(GuiConfig)
         local UIListLayout1 = Instance.new("UIListLayout");
 
         local function UpdateScrollSize()
-            local OffsetY = 0
-            for _, child in ScrolLayers:GetChildren() do
-                if not child:IsA("UIListLayout") and child.Visible then
-                    OffsetY = OffsetY + 3 + child.Size.Y.Offset
-                end
-            end
-            ScrolLayers.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+            UpdateScrollFrameSize(ScrolLayers)
         end
 
-        ScrolLayers.ScrollBarImageColor3 = Color3.fromRGB(80.00000283122063, 80.00000283122063, 80.00000283122063)
-        ScrolLayers.ScrollBarThickness = 0
+        ScrolLayers.ScrollBarImageColor3 = GuiConfig.Color
+        ScrolLayers.ScrollBarThickness = 3
         ScrolLayers.Active = true
         ScrolLayers.LayoutOrder = CountTab
         ScrolLayers.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -1790,6 +1796,9 @@ function ZeroImpact:Window(GuiConfig)
                         Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
                         SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
                         UpdateScrollSize()
+                        if Section.Parent ~= ScrolLayers then
+                            UpdateScrollFrameSize(Section.Parent)
+                        end
                     else
                         if FeatureFrame and FeatureFrame.Parent then
                             TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
@@ -1801,6 +1810,9 @@ function ZeroImpact:Window(GuiConfig)
                         task.spawn(function()
                             task.wait(0.5)
                             UpdateScrollSize()
+                            if Section.Parent ~= ScrolLayers then
+                                UpdateScrollFrameSize(Section.Parent)
+                            end
                         end)
                     end
                 else
@@ -1810,6 +1822,9 @@ function ZeroImpact:Window(GuiConfig)
                         end
                         Section.Size = UDim2.new(1, 1, 0, 30)
                         UpdateScrollSize()
+                        if Section.Parent ~= ScrolLayers then
+                            UpdateScrollFrameSize(Section.Parent)
+                        end
                     else
                         if FeatureFrame and FeatureFrame.Parent then
                             TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
@@ -1818,6 +1833,9 @@ function ZeroImpact:Window(GuiConfig)
                         task.spawn(function()
                             task.wait(0.5)
                             UpdateScrollSize()
+                            if Section.Parent ~= ScrolLayers then
+                                UpdateScrollFrameSize(Section.Parent)
+                            end
                         end)
                     end
                 end
@@ -3278,7 +3296,7 @@ function ZeroImpact:Window(GuiConfig)
         PlaceholderLabel.Font = Enum.Font.Gotham
         PlaceholderLabel.TextSize = 12
         PlaceholderLabel.TextColor3 = Color3.fromRGB(150, 170, 190)
-        PlaceholderLabel.Text = "No favorite sections yet.\n\nClick the star icon on any section to pin it here!"
+        PlaceholderLabel.Text = "Belum ada section favorit.\n\nKlik ikon bintang pada section mana pun untuk menambahkannya ke sini!"
         PlaceholderLabel.TextWrapped = true
         PlaceholderLabel.Parent = PlaceholderFrame
     end
