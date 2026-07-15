@@ -1,4 +1,4 @@
---V34
+--V35
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -556,7 +556,9 @@ function ZeroImpact:MakeNotify(NotifyConfig)
         TextLabel2.Parent = NotifyFrameReal
         TextLabel2.Size = UDim2.new(1, -90, 0, 13)
 
-        TextLabel2.Size = UDim2.new(1, -90, 0, 13 + (13 * (TextLabel2.TextBounds.X // TextLabel2.AbsoluteSize.X)))
+        local notifyWidth = TextLabel2.AbsoluteSize.X
+        if notifyWidth <= 0 then notifyWidth = 230 end
+        TextLabel2.Size = UDim2.new(1, -90, 0, 13 + (13 * (TextLabel2.TextBounds.X // notifyWidth)))
         TextLabel2.TextWrapped = true
 
         if TextLabel2.AbsoluteSize.Y < 27 then
@@ -2454,8 +2456,10 @@ function ZeroImpact:Window(GuiConfig)
                     ToggleTitle2.Visible = false
                 end
 
+                local toggleWidthInit = ToggleContent.AbsoluteSize.X
+                if toggleWidthInit <= 0 then toggleWidthInit = 300 end
                 ToggleContent.Size = UDim2.new(1, -100, 0,
-                    12 + (12 * (ToggleContent.TextBounds.X // ToggleContent.AbsoluteSize.X)))
+                    12 + (12 * (ToggleContent.TextBounds.X // toggleWidthInit)))
                 ToggleContent.TextWrapped = true
                 if ToggleConfig.Title2 ~= "" then
                     Toggle.Size = UDim2.new(1, 0, 0, ToggleContent.AbsoluteSize.Y + 47)
@@ -2465,8 +2469,10 @@ function ZeroImpact:Window(GuiConfig)
 
                 ToggleContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     ToggleContent.TextWrapped = false
+                    local toggleWidth = ToggleContent.AbsoluteSize.X
+                    if toggleWidth <= 0 then toggleWidth = 300 end
                     ToggleContent.Size = UDim2.new(1, -100, 0,
-                        12 + (12 * (ToggleContent.TextBounds.X // ToggleContent.AbsoluteSize.X)))
+                        12 + (12 * (ToggleContent.TextBounds.X // toggleWidth)))
                     if ToggleConfig.Title2 ~= "" then
                         Toggle.Size = UDim2.new(1, 0, 0, ToggleContent.AbsoluteSize.Y + 47)
                     else
@@ -2642,15 +2648,19 @@ function ZeroImpact:Window(GuiConfig)
                 SliderContent.Name = "SliderContent"
                 SliderContent.Parent = Slider
 
+                local sliderWidthInit = SliderContent.AbsoluteSize.X
+                if sliderWidthInit <= 0 then sliderWidthInit = 300 end
                 SliderContent.Size = UDim2.new(1, -180, 0,
-                    12 + (12 * (SliderContent.TextBounds.X // SliderContent.AbsoluteSize.X)))
+                    12 + (12 * (SliderContent.TextBounds.X // sliderWidthInit)))
                 SliderContent.TextWrapped = true
                 Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 33)
 
                 SliderContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     SliderContent.TextWrapped = false
+                    local sliderWidth = SliderContent.AbsoluteSize.X
+                    if sliderWidth <= 0 then sliderWidth = 300 end
                     SliderContent.Size = UDim2.new(1, -180, 0,
-                        12 + (12 * (SliderContent.TextBounds.X // SliderContent.AbsoluteSize.X)))
+                        12 + (12 * (SliderContent.TextBounds.X // sliderWidth)))
                     Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 33)
                     SliderContent.TextWrapped = true
                     UpdateSizeSection()
@@ -2872,15 +2882,19 @@ function ZeroImpact:Window(GuiConfig)
                 InputContent.Name = "InputContent"
                 InputContent.Parent = Input
 
+                local inputWidthInit = InputContent.AbsoluteSize.X
+                if inputWidthInit <= 0 then inputWidthInit = 300 end
                 InputContent.Size = UDim2.new(1, -180, 0,
-                    12 + (12 * (InputContent.TextBounds.X // InputContent.AbsoluteSize.X)))
+                    12 + (12 * (InputContent.TextBounds.X // inputWidthInit)))
                 InputContent.TextWrapped = true
                 Input.Size = UDim2.new(1, 0, 0, InputContent.AbsoluteSize.Y + 33)
 
                 InputContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     InputContent.TextWrapped = false
+                    local inputWidth = InputContent.AbsoluteSize.X
+                    if inputWidth <= 0 then inputWidth = 300 end
                     InputContent.Size = UDim2.new(1, -180, 0,
-                        12 + (12 * (InputContent.TextBounds.X // InputContent.AbsoluteSize.X)))
+                        12 + (12 * (InputContent.TextBounds.X // inputWidth)))
                     Input.Size = UDim2.new(1, 0, 0, InputContent.AbsoluteSize.Y + 33)
                     InputContent.TextWrapped = true
                     UpdateSizeSection()
