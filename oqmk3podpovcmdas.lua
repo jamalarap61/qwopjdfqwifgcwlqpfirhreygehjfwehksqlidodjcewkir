@@ -1,4 +1,4 @@
---V23
+--V24
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -123,6 +123,10 @@ local Icons = {
     rod       = "rbxassetid://103247953194129",
     fish      = "rbxassetid://97167558235554",
     enviicon  = "rbxassetid://101669656973003",
+    leaf      = "rbxassetid://10723425539",
+    video     = "rbxassetid://10723373884",
+    flower    = "rbxassetid://10747830374",
+
 }
 
 local UserInputService = game:GetService("UserInputService")
@@ -743,9 +747,19 @@ function ZeroImpact:Window(GuiConfig)
     TextLabel1.BackgroundTransparency = 0.9990000128746033
     TextLabel1.BorderColor3 = Color3.fromRGB(0, 0, 0)
     TextLabel1.BorderSizePixel = 0
-    TextLabel1.Size = UDim2.new(1, -(TextLabel.TextBounds.X + 104), 1, 0)
-    TextLabel1.Position = UDim2.new(0, TextLabel.TextBounds.X + 40, 0, 0)
+    TextLabel1.Size = UDim2.new(1, -150, 1, 0)
+    TextLabel1.Position = UDim2.new(0, 120, 0, 0)
     TextLabel1.Parent = Top
+
+    local function updateTitlePositions()
+        local boundsX = TextLabel.TextBounds.X
+        if boundsX > 0 then
+            TextLabel1.Position = UDim2.new(0, boundsX + 46, 0, 0)
+            TextLabel1.Size = UDim2.new(1, -(boundsX + 110), 1, 0)
+        end
+    end
+    TextLabel:GetPropertyChangedSignal("TextBounds"):Connect(updateTitlePositions)
+    updateTitlePositions()
 
     Close.Font = Enum.Font.SourceSans
     Close.Text = ""
@@ -892,15 +906,18 @@ function ZeroImpact:Window(GuiConfig)
         end
         
         for _, tabData in ipairs(SearchableItems) do
-            local tabMatches = tabData.TabName:lower():find(query) ~= nil
+            local cleanTabName = tabData.TabName:lower():gsub("%s+", "")
+            local tabMatches = cleanTabName:find(query) ~= nil
             local anySectionMatches = false
             
             for _, sectionData in ipairs(tabData.Sections) do
-                local sectionMatches = sectionData.SectionTitle:lower():find(query) ~= nil
+                local cleanSectionTitle = sectionData.SectionTitle:lower():gsub("%s+", "")
+                local sectionMatches = cleanSectionTitle:find(query) ~= nil
                 local anyItemMatches = false
                 
                 for _, itemData in ipairs(sectionData.Items) do
-                    local itemMatches = itemData.Title:lower():find(query) ~= nil
+                    local cleanItemTitle = itemData.Title:lower():gsub("%s+", "")
+                    local itemMatches = cleanItemTitle:find(query) ~= nil
                     
                     if itemMatches or sectionMatches or tabMatches then
                         itemData.Frame.Visible = true
@@ -3261,7 +3278,7 @@ function ZeroImpact:Window(GuiConfig)
         PlaceholderLabel.Font = Enum.Font.Gotham
         PlaceholderLabel.TextSize = 12
         PlaceholderLabel.TextColor3 = Color3.fromRGB(150, 170, 190)
-        PlaceholderLabel.Text = "No favorite sections yet.\n\nClick the star icon on any section to add it here!"
+        PlaceholderLabel.Text = "No favorite sections yet.\n\nClick the star icon on any section to pin it here!"
         PlaceholderLabel.TextWrapped = true
         PlaceholderLabel.Parent = PlaceholderFrame
     end
