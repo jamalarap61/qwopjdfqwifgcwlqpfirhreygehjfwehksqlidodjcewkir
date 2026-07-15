@@ -1,4 +1,4 @@
---V25
+--V26
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -2897,7 +2897,7 @@ function ZeroImpact:Window(GuiConfig)
                 Dropdown.BackgroundTransparency = 0.2
                 Dropdown.BorderSizePixel = 0
                 Dropdown.LayoutOrder = CountItem
-                Dropdown.Size = UDim2.new(1, 0, 0, 46)
+                Dropdown.Size = UDim2.new(1, 0, 0, 54)
                 Dropdown.Name = "Dropdown"
                 Dropdown.Parent = SectionAdd
 
@@ -2916,8 +2916,8 @@ function ZeroImpact:Window(GuiConfig)
                 DropdownTitle.TextSize = 13
                 DropdownTitle.TextXAlignment = Enum.TextXAlignment.Left
                 DropdownTitle.BackgroundTransparency = 1
-                DropdownTitle.Position = UDim2.new(0, 10, 0, 10)
-                DropdownTitle.Size = UDim2.new(1, -180, 0, 13)
+                DropdownTitle.Position = UDim2.new(0, 10, 0, 6)
+                DropdownTitle.Size = UDim2.new(1, -185, 0, 13)
                 DropdownTitle.Name = "DropdownTitle"
                 DropdownTitle.Parent = Dropdown
 
@@ -2929,8 +2929,8 @@ function ZeroImpact:Window(GuiConfig)
                 DropdownContent.TextWrapped = true
                 DropdownContent.TextXAlignment = Enum.TextXAlignment.Left
                 DropdownContent.BackgroundTransparency = 1
-                DropdownContent.Position = UDim2.new(0, 10, 0, 25)
-                DropdownContent.Size = UDim2.new(1, -180, 0, 12)
+                DropdownContent.Position = UDim2.new(0, 10, 0, 21)
+                DropdownContent.Size = UDim2.new(1, -185, 0, 28)
                 DropdownContent.Name = "DropdownContent"
                 DropdownContent.Parent = Dropdown
 
