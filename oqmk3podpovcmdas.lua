@@ -1,4 +1,4 @@
---V35
+--V36
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -10,15 +10,6 @@ local listfiles = listfiles or function() return {} end
 local getgenv = getgenv or function() return _G end
 
 local HttpService = game:GetService("HttpService")
-
-local isInitializing = true
-local function deferLayout(func)
-    if task and task.defer then
-        task.defer(func)
-    else
-        task.spawn(func)
-    end
-end
 
 if not isfolder("ZeroImpact") then
     makefolder("ZeroImpact")
@@ -56,21 +47,11 @@ local CurrentTabName = ""
 local FavoritedUpdateScroll = nil
 local PlaceholderFrame = nil
 
-local savePending = false
 function SaveConfig()
     if _G.ZeroImpactAutoSave == false then return end
-    if not savePending then
-        savePending = true
-        task.spawn(function()
-            task.wait(0.1) -- 100ms debounce
-            savePending = false
-            if writefile and CURRENT_VERSION then
-                ConfigData._version = CURRENT_VERSION
-                pcall(function()
-                    writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
-                end)
-            end
-        end)
+    if writefile then
+        ConfigData._version = CURRENT_VERSION
+        writefile(ConfigFile, HttpService:JSONEncode(ConfigData))
     end
 end
 
@@ -556,9 +537,7 @@ function ZeroImpact:MakeNotify(NotifyConfig)
         TextLabel2.Parent = NotifyFrameReal
         TextLabel2.Size = UDim2.new(1, -90, 0, 13)
 
-        local notifyWidth = TextLabel2.AbsoluteSize.X
-        if notifyWidth <= 0 then notifyWidth = 230 end
-        TextLabel2.Size = UDim2.new(1, -90, 0, 13 + (13 * (TextLabel2.TextBounds.X // notifyWidth)))
+        TextLabel2.Size = UDim2.new(1, -90, 0, 13 + (13 * (TextLabel2.TextBounds.X // TextLabel2.AbsoluteSize.X)))
         TextLabel2.TextWrapped = true
 
         if TextLabel2.AbsoluteSize.Y < 27 then
@@ -607,17 +586,6 @@ function notif(msg, delay, color, title, desc, icon)
 end
 
 function ZeroImpact:Window(GuiConfig)
-    isInitializing = true
-    if task and task.defer then
-        task.defer(function()
-            isInitializing = false
-        end)
-    else
-        task.spawn(function()
-            task.wait()
-            isInitializing = false
-        end)
-    end
     local UpdateSize1
     GuiConfig              = GuiConfig or {}
     GuiConfig.Title        = GuiConfig.Title or "ZeroImpact"
@@ -1088,21 +1056,14 @@ function ZeroImpact:Window(GuiConfig)
     UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     UIListLayout.Parent = ScrollTab
 
-    local updateSize1Pending = false
     UpdateSize1 = function()
-        if not updateSize1Pending then
-            updateSize1Pending = true
-            deferLayout(function()
-                updateSize1Pending = false
-                local OffsetY = 0
-                for _, child in ScrollTab:GetChildren() do
-                    if not child:IsA("UIListLayout") and child.Visible then
-                        OffsetY = OffsetY + 3 + child.Size.Y.Offset
-                    end
-                end
-                ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
-            end)
+        local OffsetY = 0
+        for _, child in ScrollTab:GetChildren() do
+            if not child:IsA("UIListLayout") and child.Visible then
+                OffsetY = OffsetY + 3 + child.Size.Y.Offset
+            end
         end
+        ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
     end
     ScrollTab.ChildAdded:Connect(UpdateSize1)
     ScrollTab.ChildRemoved:Connect(UpdateSize1)
@@ -1820,69 +1781,63 @@ function ZeroImpact:Window(GuiConfig)
 
             local mySectionData
 
-            local updateSectionPending = false
             local function UpdateSizeSection(instant)
-                local isInstant = (instant == true) or isInitializing
-                if not updateSectionPending then
-                    updateSectionPending = true
-                    deferLayout(function()
-                        updateSectionPending = false
-                        if OpenSection or (mySectionData and mySectionData.ForceOpen) then
-                            local SectionSizeYWitdh = 38
-                            for _, v in SectionAdd:GetChildren() do
-                                if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
-                                    SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
-                                end
-                            end
-                            if isInstant then
-                                if FeatureFrame and FeatureFrame.Parent then
-                                    FeatureFrame.Rotation = 90
-                                end
-                                Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
-                                SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
-                                UpdateScrollSize()
-                                if Section.Parent ~= ScrolLayers then
-                                    UpdateScrollFrameSize(Section.Parent)
-                                end
-                            else
-                                if FeatureFrame and FeatureFrame.Parent then
-                                    TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
-                                end
-                                TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) }):Play()
-                                TweenService:Create(SectionAdd, TweenInfo.new(0.5), { Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38) }):Play()
-                                task.spawn(function()
-                                    task.wait(0.5)
-                                    UpdateScrollSize()
-                                    if Section.Parent ~= ScrolLayers then
-                                        UpdateScrollFrameSize(Section.Parent)
-                                    end
-                                end)
-                            end
-                        else
-                            if isInstant then
-                                if FeatureFrame and FeatureFrame.Parent then
-                                    FeatureFrame.Rotation = 0
-                                end
-                                Section.Size = UDim2.new(1, 1, 0, 30)
-                                UpdateScrollSize()
-                                if Section.Parent ~= ScrolLayers then
-                                    UpdateScrollFrameSize(Section.Parent)
-                                end
-                            else
-                                if FeatureFrame and FeatureFrame.Parent then
-                                    TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
-                                end
-                                TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
-                                task.spawn(function()
-                                    task.wait(0.5)
-                                    UpdateScrollSize()
-                                    if Section.Parent ~= ScrolLayers then
-                                        UpdateScrollFrameSize(Section.Parent)
-                                    end
-                                end)
-                            end
+                if OpenSection or (mySectionData and mySectionData.ForceOpen) then
+                    local SectionSizeYWitdh = 38
+                    for _, v in SectionAdd:GetChildren() do
+                        if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
+                            SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                         end
-                    end)
+                    end
+                    if instant == true then
+                        if FeatureFrame and FeatureFrame.Parent then
+                            FeatureFrame.Rotation = 90
+                        end
+                        Section.Size = UDim2.new(1, 1, 0, SectionSizeYWitdh)
+                        SectionAdd.Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38)
+                        UpdateScrollSize()
+                        if Section.Parent ~= ScrolLayers then
+                            UpdateScrollFrameSize(Section.Parent)
+                        end
+                    else
+                        if FeatureFrame and FeatureFrame.Parent then
+                            TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 90 }):Play()
+                        end
+                        TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, SectionSizeYWitdh) })
+                            :Play()
+                        TweenService:Create(SectionAdd, TweenInfo.new(0.5),
+                            { Size = UDim2.new(1, 0, 0, SectionSizeYWitdh - 38) }):Play()
+                        task.spawn(function()
+                            task.wait(0.5)
+                            UpdateScrollSize()
+                            if Section.Parent ~= ScrolLayers then
+                                UpdateScrollFrameSize(Section.Parent)
+                            end
+                        end)
+                    end
+                else
+                    if instant == true then
+                        if FeatureFrame and FeatureFrame.Parent then
+                            FeatureFrame.Rotation = 0
+                        end
+                        Section.Size = UDim2.new(1, 1, 0, 30)
+                        UpdateScrollSize()
+                        if Section.Parent ~= ScrolLayers then
+                            UpdateScrollFrameSize(Section.Parent)
+                        end
+                    else
+                        if FeatureFrame and FeatureFrame.Parent then
+                            TweenService:Create(FeatureFrame, TweenInfo.new(0.5), { Rotation = 0 }):Play()
+                        end
+                        TweenService:Create(Section, TweenInfo.new(0.5), { Size = UDim2.new(1, 1, 0, 30) }):Play()
+                        task.spawn(function()
+                            task.wait(0.5)
+                            UpdateScrollSize()
+                            if Section.Parent ~= ScrolLayers then
+                                UpdateScrollFrameSize(Section.Parent)
+                            end
+                        end)
+                    end
                 end
             end
 
@@ -2456,10 +2411,8 @@ function ZeroImpact:Window(GuiConfig)
                     ToggleTitle2.Visible = false
                 end
 
-                local toggleWidthInit = ToggleContent.AbsoluteSize.X
-                if toggleWidthInit <= 0 then toggleWidthInit = 300 end
                 ToggleContent.Size = UDim2.new(1, -100, 0,
-                    12 + (12 * (ToggleContent.TextBounds.X // toggleWidthInit)))
+                    12 + (12 * (ToggleContent.TextBounds.X // ToggleContent.AbsoluteSize.X)))
                 ToggleContent.TextWrapped = true
                 if ToggleConfig.Title2 ~= "" then
                     Toggle.Size = UDim2.new(1, 0, 0, ToggleContent.AbsoluteSize.Y + 47)
@@ -2469,10 +2422,8 @@ function ZeroImpact:Window(GuiConfig)
 
                 ToggleContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     ToggleContent.TextWrapped = false
-                    local toggleWidth = ToggleContent.AbsoluteSize.X
-                    if toggleWidth <= 0 then toggleWidth = 300 end
                     ToggleContent.Size = UDim2.new(1, -100, 0,
-                        12 + (12 * (ToggleContent.TextBounds.X // toggleWidth)))
+                        12 + (12 * (ToggleContent.TextBounds.X // ToggleContent.AbsoluteSize.X)))
                     if ToggleConfig.Title2 ~= "" then
                         Toggle.Size = UDim2.new(1, 0, 0, ToggleContent.AbsoluteSize.Y + 47)
                     else
@@ -2518,8 +2469,7 @@ function ZeroImpact:Window(GuiConfig)
                     ToggleFunc:Set(ToggleFunc.Value)
                 end)
 
-                function ToggleFunc:Set(Value, ignoreSave)
-                    ToggleFunc.Value = Value
+                function ToggleFunc:Set(Value)
                     if typeof(ToggleConfig.Callback) == "function" then
                         local ok, err = pcall(function()
                             ToggleConfig.Callback(Value)
@@ -2527,44 +2477,27 @@ function ZeroImpact:Window(GuiConfig)
                         if not ok then warn("Toggle Callback error:", err) end
                     end
                     ConfigData[configKey] = Value
-                    if not ignoreSave then
-                        SaveConfig()
-                    end
-                    local isInstant = ignoreSave or isInitializing
+                    SaveConfig()
                     if Value then
-                        if isInstant then
-                            ToggleTitle.TextColor3 = GuiConfig.Color
-                            ToggleCircle.Position = UDim2.new(0, 15, 0, 0)
-                            ToggleCircle.BackgroundColor3 = Color3.fromRGB(20, 28, 40)
-                            UIStroke8.Color = GuiConfig.Color
-                            UIStroke8.Transparency = 0
-                            FeatureFrame2.BackgroundColor3 = GuiConfig.Color
-                            FeatureFrame2.BackgroundTransparency = 0
-                        else
-                            TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
-                            TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(20, 28, 40) }):Play()
-                            TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 }):Play()
-                            TweenService:Create(FeatureFrame2, TweenInfo.new(0.2), { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
-                        end
+                        TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = GuiConfig.Color }):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 15, 0, 0), BackgroundColor3 = Color3.fromRGB(20, 28, 40) })
+                            :Play()
+                        TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = GuiConfig.Color, Transparency = 0 })
+                            :Play()
+                        TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
+                            { BackgroundColor3 = GuiConfig.Color, BackgroundTransparency = 0 }):Play()
                     else
-                        if isInstant then
-                            ToggleTitle.TextColor3 = Color3.fromRGB(230, 230, 230)
-                            ToggleCircle.Position = UDim2.new(0, 0, 0, 0)
-                            ToggleCircle.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-                            UIStroke8.Color = Color3.fromRGB(255, 255, 255)
-                            UIStroke8.Transparency = 0.9
-                            FeatureFrame2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-                            FeatureFrame2.BackgroundTransparency = 0.92
-                        else
-                            TweenService:Create(ToggleTitle, TweenInfo.new(0.2), { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                            TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0), BackgroundColor3 = Color3.fromRGB(230, 230, 230) }):Play()
-                            TweenService:Create(UIStroke8, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
-                            TweenService:Create(FeatureFrame2, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
-                        end
+                        TweenService:Create(ToggleTitle, TweenInfo.new(0.2),
+                            { TextColor3 = Color3.fromRGB(230, 230, 230) }):Play()
+                        TweenService:Create(ToggleCircle, TweenInfo.new(0.2), { Position = UDim2.new(0, 0, 0, 0), BackgroundColor3 = Color3.fromRGB(230, 230, 230) }):Play()
+                        TweenService:Create(UIStroke8, TweenInfo.new(0.2),
+                            { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.9 }):Play()
+                        TweenService:Create(FeatureFrame2, TweenInfo.new(0.2),
+                            { BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.92 }):Play()
                     end
                 end
 
-                ToggleFunc:Set(ToggleFunc.Value, true)
+                ToggleFunc:Set(ToggleFunc.Value)
                 CountItem = CountItem + 1
                 Elements[configKey] = ToggleFunc
                 return ToggleFunc
@@ -2648,19 +2581,15 @@ function ZeroImpact:Window(GuiConfig)
                 SliderContent.Name = "SliderContent"
                 SliderContent.Parent = Slider
 
-                local sliderWidthInit = SliderContent.AbsoluteSize.X
-                if sliderWidthInit <= 0 then sliderWidthInit = 300 end
                 SliderContent.Size = UDim2.new(1, -180, 0,
-                    12 + (12 * (SliderContent.TextBounds.X // sliderWidthInit)))
+                    12 + (12 * (SliderContent.TextBounds.X // SliderContent.AbsoluteSize.X)))
                 SliderContent.TextWrapped = true
                 Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 33)
 
                 SliderContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     SliderContent.TextWrapped = false
-                    local sliderWidth = SliderContent.AbsoluteSize.X
-                    if sliderWidth <= 0 then sliderWidth = 300 end
                     SliderContent.Size = UDim2.new(1, -180, 0,
-                        12 + (12 * (SliderContent.TextBounds.X // sliderWidth)))
+                        12 + (12 * (SliderContent.TextBounds.X // SliderContent.AbsoluteSize.X)))
                     Slider.Size = UDim2.new(1, 0, 0, SliderContent.AbsoluteSize.Y + 33)
                     SliderContent.TextWrapped = true
                     UpdateSizeSection()
@@ -2737,27 +2666,19 @@ function ZeroImpact:Window(GuiConfig)
                     end
                     return Result
                 end
-                function SliderFunc:Set(Value, ignoreSave)
+                function SliderFunc:Set(Value)
                     Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
                     SliderFunc.Value = Value
                     TextBox.Text = tostring(Value)
-                    local isInstant = ignoreSave or isInitializing
-                    local targetScale = UDim2.fromScale((Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1)
-                    if isInstant then
-                        SliderDraggable.Size = targetScale
-                    else
-                        TweenService:Create(
-                            SliderDraggable,
-                            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                            { Size = targetScale }
-                        ):Play()
-                    end
+                    TweenService:Create(
+                        SliderDraggable,
+                        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                        { Size = UDim2.fromScale((Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1) }
+                    ):Play()
 
                     SliderConfig.Callback(Value)
                     ConfigData[configKey] = Value
-                    if not ignoreSave then
-                        SaveConfig()
-                    end
+                    SaveConfig()
                 end
 
                 SliderFrame.InputBegan:Connect(function(Input)
@@ -2809,7 +2730,7 @@ function ZeroImpact:Window(GuiConfig)
                         SliderFunc:Set(SliderConfig.Min)
                     end
                 end)
-                SliderFunc:Set(SliderConfig.Default, true)
+                SliderFunc:Set(SliderConfig.Default)
                 CountItem = CountItem + 1
                 Elements[configKey] = SliderFunc
                 return SliderFunc
@@ -2882,19 +2803,15 @@ function ZeroImpact:Window(GuiConfig)
                 InputContent.Name = "InputContent"
                 InputContent.Parent = Input
 
-                local inputWidthInit = InputContent.AbsoluteSize.X
-                if inputWidthInit <= 0 then inputWidthInit = 300 end
                 InputContent.Size = UDim2.new(1, -180, 0,
-                    12 + (12 * (InputContent.TextBounds.X // inputWidthInit)))
+                    12 + (12 * (InputContent.TextBounds.X // InputContent.AbsoluteSize.X)))
                 InputContent.TextWrapped = true
                 Input.Size = UDim2.new(1, 0, 0, InputContent.AbsoluteSize.Y + 33)
 
                 InputContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
                     InputContent.TextWrapped = false
-                    local inputWidth = InputContent.AbsoluteSize.X
-                    if inputWidth <= 0 then inputWidth = 300 end
                     InputContent.Size = UDim2.new(1, -180, 0,
-                        12 + (12 * (InputContent.TextBounds.X // inputWidth)))
+                        12 + (12 * (InputContent.TextBounds.X // InputContent.AbsoluteSize.X)))
                     Input.Size = UDim2.new(1, 0, 0, InputContent.AbsoluteSize.Y + 33)
                     InputContent.TextWrapped = true
                     UpdateSizeSection()
@@ -2932,17 +2849,15 @@ function ZeroImpact:Window(GuiConfig)
                 InputTextBox.Size = UDim2.new(1, -10, 1, -8)
                 InputTextBox.Name = "InputTextBox"
                 InputTextBox.Parent = InputFrame
-                function InputFunc:Set(Value, ignoreSave)
+                function InputFunc:Set(Value)
                     InputTextBox.Text = Value
                     InputFunc.Value = Value
                     InputConfig.Callback(Value)
                     ConfigData[configKey] = Value
-                    if not ignoreSave then
-                        SaveConfig()
-                    end
+                    SaveConfig()
                 end
 
-                InputFunc:Set(InputFunc.Value, true)
+                InputFunc:Set(InputFunc.Value)
 
                 InputTextBox.FocusLost:Connect(function()
                     InputFunc:Set(InputTextBox.Text)
@@ -3205,7 +3120,7 @@ function ZeroImpact:Window(GuiConfig)
                     end)
                 end
 
-                function DropdownFunc:Set(Value, ignoreSave)
+                function DropdownFunc:Set(Value)
                     if DropdownConfig.Multi then
                         DropdownFunc.Value = type(Value) == "table" and Value or {}
                     else
@@ -3213,11 +3128,8 @@ function ZeroImpact:Window(GuiConfig)
                     end
 
                     ConfigData[configKey] = DropdownFunc.Value
-                    if not ignoreSave then
-                        SaveConfig()
-                    end
+                    SaveConfig()
 
-                    local isInstant = ignoreSave or isInitializing
                     local texts = {}
                     for _, Drop in ScrollSelect:GetChildren() do
                         if Drop.Name == "Option" and Drop:FindFirstChild("OptionText") then
@@ -3226,30 +3138,18 @@ function ZeroImpact:Window(GuiConfig)
                                 DropdownFunc.Value == v
 
                             if selected then
-                                if isInstant then
-                                    Drop.ChooseFrame.Size = UDim2.new(0, 1, 0, 12)
-                                    Drop.ChooseFrame.UIStroke.Transparency = 0
-                                    Drop.BackgroundTransparency = 0.935
-                                else
-                                    TweenService:Create(Drop.ChooseFrame, TweenInfo.new(0.2),
-                                        { Size = UDim2.new(0, 1, 0, 12) }):Play()
-                                    TweenService:Create(Drop.ChooseFrame.UIStroke, TweenInfo.new(0.2), { Transparency = 0 })
-                                        :Play()
-                                    TweenService:Create(Drop, TweenInfo.new(0.2), { BackgroundTransparency = 0.935 }):Play()
-                                end
+                                TweenService:Create(Drop.ChooseFrame, TweenInfo.new(0.2),
+                                    { Size = UDim2.new(0, 1, 0, 12) }):Play()
+                                TweenService:Create(Drop.ChooseFrame.UIStroke, TweenInfo.new(0.2), { Transparency = 0 })
+                                    :Play()
+                                TweenService:Create(Drop, TweenInfo.new(0.2), { BackgroundTransparency = 0.935 }):Play()
                                 table.insert(texts, Drop.OptionText.Text)
                             else
-                                if isInstant then
-                                    Drop.ChooseFrame.Size = UDim2.new(0, 0, 0, 0)
-                                    Drop.ChooseFrame.UIStroke.Transparency = 0.999
-                                    Drop.BackgroundTransparency = 0.999
-                                else
-                                    TweenService:Create(Drop.ChooseFrame, TweenInfo.new(0.1),
-                                        { Size = UDim2.new(0, 0, 0, 0) }):Play()
-                                    TweenService:Create(Drop.ChooseFrame.UIStroke, TweenInfo.new(0.1),
-                                        { Transparency = 0.999 }):Play()
-                                    TweenService:Create(Drop, TweenInfo.new(0.1), { BackgroundTransparency = 0.999 }):Play()
-                                end
+                                TweenService:Create(Drop.ChooseFrame, TweenInfo.new(0.1),
+                                    { Size = UDim2.new(0, 0, 0, 0) }):Play()
+                                TweenService:Create(Drop.ChooseFrame.UIStroke, TweenInfo.new(0.1),
+                                    { Transparency = 0.999 }):Play()
+                                TweenService:Create(Drop, TweenInfo.new(0.1), { BackgroundTransparency = 0.999 }):Play()
                             end
                         end
                     end
@@ -3268,15 +3168,15 @@ function ZeroImpact:Window(GuiConfig)
                     end
                 end
 
-                function DropdownFunc:SetValue(val, ignoreSave)
-                    self:Set(val, ignoreSave)
+                function DropdownFunc:SetValue(val)
+                    self:Set(val)
                 end
 
                 function DropdownFunc:GetValue()
                     return self.Value
                 end
 
-                function DropdownFunc:SetValues(newList, selecting, ignoreSave)
+                function DropdownFunc:SetValues(newList, selecting)
                     newList = newList or {}
                     selecting = selecting or (DropdownConfig.Multi and {} or nil)
                     DropdownFunc:Clear()
@@ -3284,10 +3184,10 @@ function ZeroImpact:Window(GuiConfig)
                         DropdownFunc:AddOption(v)
                     end
                     DropdownFunc.Options = newList
-                    DropdownFunc:Set(selecting, ignoreSave)
+                    DropdownFunc:Set(selecting)
                 end
 
-                DropdownFunc:SetValues(DropdownFunc.Options, DropdownFunc.Value, true)
+                DropdownFunc:SetValues(DropdownFunc.Options, DropdownFunc.Value)
 
                 CountItem = CountItem + 1
                 CountDropdown = CountDropdown + 1
