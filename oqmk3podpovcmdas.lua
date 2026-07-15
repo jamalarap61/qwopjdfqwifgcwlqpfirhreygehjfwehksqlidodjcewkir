@@ -1,4 +1,4 @@
---V32
+--V33
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -2689,12 +2689,7 @@ function ZeroImpact:Window(GuiConfig)
                         { Size = UDim2.fromScale((Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1) }
                     ):Play()
 
-                    if typeof(SliderConfig.Callback) == "function" then
-                        local ok, err = pcall(function()
-                            SliderConfig.Callback(Value)
-                        end)
-                        if not ok then warn("Slider Callback error:", err) end
-                    end
+                    SliderConfig.Callback(Value)
                     ConfigData[configKey] = Value
                     if not ignoreSave then
                         SaveConfig()
@@ -2872,12 +2867,7 @@ function ZeroImpact:Window(GuiConfig)
                 function InputFunc:Set(Value, ignoreSave)
                     InputTextBox.Text = Value
                     InputFunc.Value = Value
-                    if typeof(InputConfig.Callback) == "function" then
-                        local ok, err = pcall(function()
-                            InputConfig.Callback(Value)
-                        end)
-                        if not ok then warn("Input Callback error:", err) end
-                    end
+                    InputConfig.Callback(Value)
                     ConfigData[configKey] = Value
                     if not ignoreSave then
                         SaveConfig()
@@ -3188,15 +3178,12 @@ function ZeroImpact:Window(GuiConfig)
                         or table.concat(texts, ", ")
 
                     if DropdownConfig.Callback then
-                        local ok, err = pcall(function()
-                            if DropdownConfig.Multi then
-                                DropdownConfig.Callback(DropdownFunc.Value)
-                            else
-                                local str = (DropdownFunc.Value ~= nil) and tostring(DropdownFunc.Value) or ""
-                                DropdownConfig.Callback(str)
-                            end
-                        end)
-                        if not ok then warn("Dropdown Callback error:", err) end
+                        if DropdownConfig.Multi then
+                            DropdownConfig.Callback(DropdownFunc.Value)
+                        else
+                            local str = (DropdownFunc.Value ~= nil) and tostring(DropdownFunc.Value) or ""
+                            DropdownConfig.Callback(str)
+                        end
                     end
                 end
 
