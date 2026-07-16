@@ -1,4 +1,4 @@
---V39
+--V40
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -10,6 +10,14 @@ local listfiles = listfiles or function() return {} end
 local getgenv = getgenv or function() return _G end
 
 local HttpService = game:GetService("HttpService")
+local connectionsRegistry = {}
+local function trackConnection(connection)
+    if connection then
+        table.insert(connectionsRegistry, connection)
+    end
+    return connection
+end
+
 
 if not isfolder("ZeroImpact") then
     makefolder("ZeroImpact")
@@ -79,12 +87,21 @@ function LoadConfigFromFile()
     end
 end
 
+-- [OPTIMIZATION: Asynchronous Config Loading to prevent freezing client]
 function LoadConfigElements()
-    for key, element in pairs(Elements) do
-        if ConfigData[key] ~= nil and element.Set then
-            element:Set(ConfigData[key], true)
+    task.defer(function()
+        local count = 0
+        for key, element in pairs(Elements) do
+            if ConfigData[key] ~= nil and element.Set then
+                element:Set(ConfigData[key], true)
+                count = count + 1
+                -- Yield every 15 elements to avoid blocking main frame rendering
+                if count % 15 == 0 then
+                    task.wait()
+                end
+            end
         end
-    end
+    end)
 end
 
 local Icons = {
@@ -135,7 +152,14 @@ local LocalPlayer = game:GetService("Players").LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local CoreGui = game:GetService("CoreGui")
 local RobloxGui = CoreGui:WaitForChild("RobloxGui")
-local viewport = workspace.CurrentCamera.ViewportSize
+-- [OPTIMIZATION: Viewport Caching & Dynamic Update]
+local currentCamera = workspace.CurrentCamera or workspace:WaitForChild("Camera")
+local viewport = currentCamera and currentCamera.ViewportSize or Vector2.new(1920, 1080)
+if currentCamera then
+    trackConnection(currentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+        viewport = currentCamera.ViewportSize
+    end)
+end
 
 local function isMobileDevice()
     return UserInputService.TouchEnabled
@@ -203,26 +227,26 @@ local function MakeDraggable(topbarobject, object, GuiConfig)
             Tween:Play()
         end
 
-        topbarobject.InputBegan:Connect(function(input)
+        trackConnection(topbarobject.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 Dragging = true
                 DragStart = input.Position
                 StartPosition = object.Position
-                input.Changed:Connect(function()
+                trackConnection(input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         Dragging = false
                     end
-                end)
+                end))
             end
-        end)
+        end))
 
-        topbarobject.InputChanged:Connect(function(input)
+        trackConnection(topbarobject.InputChanged:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                 DragInput = input
             end
-        end)
+        end))
 
-        UserInputService.InputChanged:Connect(function(input)
+        trackConnection(UserInputService.InputChanged:Connect(function(input)
             if input == DragInput and Dragging then
                 UpdatePos(input)
             end
@@ -271,26 +295,26 @@ local function MakeDraggable(topbarobject, object, GuiConfig)
             Tween:Play()
         end
 
-        changesizeobject.InputBegan:Connect(function(input)
+        trackConnection(changesizeobject.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 Dragging = true
                 DragStart = input.Position
                 StartSize = object.Size
-                input.Changed:Connect(function()
+                trackConnection(input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         Dragging = false
                     end
-                end)
+                end))
             end
-        end)
+        end))
 
-        changesizeobject.InputChanged:Connect(function(input)
+        trackConnection(changesizeobject.InputChanged:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                 DragInput = input
             end
-        end)
+        end))
 
-        UserInputService.InputChanged:Connect(function(input)
+        trackConnection(UserInputService.InputChanged:Connect(function(input)
             if input == DragInput and Dragging then
                 UpdateSize(input)
             end
@@ -560,9 +584,9 @@ function ZeroImpact:MakeNotify(NotifyConfig)
             NotifyFrame:Destroy()
         end
 
-        Close.Activated:Connect(function()
+        trackConnection(Close.Activated:Connect(function()
             NotifyFunction:Close()
-        end)
+        end))
         TweenService:Create(
             NotifyFrameReal,
             TweenInfo.new(tonumber(NotifyConfig.Time), Enum.EasingStyle.Back, Enum.EasingDirection.InOut),
@@ -885,8 +909,14 @@ function ZeroImpact:Window(GuiConfig)
         TweenService:Create(SearchStroke, TweenInfo.new(0.2), { Color = Color3.fromRGB(255, 255, 255), Transparency = 0.85 }):Play()
     end)
 
-    SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
-        local query = SearchInput.Text:lower():gsub("%s+", "")
+    local searchDebounceThread = nil
+    trackConnection(SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
+        if searchDebounceThread then
+            task.cancel(searchDebounceThread)
+        end
+        searchDebounceThread = task.delay(0.3, function()
+            searchDebounceThread = nil
+            local query = SearchInput.Text:lower():gsub("%s+", "")
         
         if query == "" then
             for _, tabData in ipairs(SearchableItems) do
@@ -950,7 +980,8 @@ function ZeroImpact:Window(GuiConfig)
             tabData.UpdateScroll()
         end
         UpdateSize1()
-    end)
+        end)
+    end))
 
     UICorner2.CornerRadius = UDim.new(0, 2)
     UICorner2.Parent = LayersTab
@@ -1056,19 +1087,34 @@ function ZeroImpact:Window(GuiConfig)
     UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
     UIListLayout.Parent = ScrollTab
 
+    -- [OPTIMIZATION: Throttled/Debounced Layout Recalculation for ScrollTab]
+    local isUpdatingSize1 = false
     UpdateSize1 = function()
-        local OffsetY = 0
-        for _, child in ScrollTab:GetChildren() do
-            if not child:IsA("UIListLayout") and child.Visible then
-                OffsetY = OffsetY + 3 + child.Size.Y.Offset
+        if isUpdatingSize1 then return end
+        isUpdatingSize1 = true
+        task.defer(function()
+            isUpdatingSize1 = false
+            local OffsetY = 0
+            for _, child in ipairs(ScrollTab:GetChildren()) do
+                if not child:IsA("UIListLayout") and child.Visible then
+                    OffsetY = OffsetY + 3 + child.Size.Y.Offset
+                end
             end
-        end
-        ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+            ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
+        end)
     end
-    ScrollTab.ChildAdded:Connect(UpdateSize1)
-    ScrollTab.ChildRemoved:Connect(UpdateSize1)
+    trackConnection(ScrollTab.ChildAdded:Connect(UpdateSize1)
+    trackConnection(ScrollTab.ChildRemoved:Connect(UpdateSize1)
 
     function GuiFunc:DestroyGui()
+        -- [OPTIMIZATION: Memory Leak Prevention - Disconnect all active connections on destroy]
+        for _, connection in ipairs(connectionsRegistry) do
+            if connection and connection.Connected then
+                pcall(function() connection:Disconnect() end)
+            end
+        end
+        table.clear(connectionsRegistry)
+        
         if RobloxGui:FindFirstChild(windowName) then
             RobloxGui[windowName]:Destroy()
         end
@@ -1077,11 +1123,11 @@ function ZeroImpact:Window(GuiConfig)
         end
     end
 
-    Min.Activated:Connect(function()
+    trackConnection(Min.Activated:Connect(function()
         CircleClick(Min, Mouse.X, Mouse.Y)
         DropShadowHolder.Visible = false
-    end)
-    Close.Activated:Connect(function()
+    end))
+    trackConnection(Close.Activated:Connect(function()
         CircleClick(Close, Mouse.X, Mouse.Y)
 
         local Overlay = Instance.new("Frame")
@@ -1188,10 +1234,10 @@ function ZeroImpact:Window(GuiConfig)
         Cancel.MouseButton1Click:Connect(function()
             Overlay:Destroy()
         end)
-    end)
+    end))
 
     local ToggleKey = Enum.KeyCode.F3
-    UserInputService.InputBegan:Connect(function(input, gpe)
+    trackConnection(UserInputService.InputBegan:Connect(function(input, gpe)
         if gpe then return end
         if input.KeyCode == ToggleKey then
             if DropShadowHolder then
@@ -1243,20 +1289,20 @@ function ZeroImpact:Window(GuiConfig)
             )
         end
 
-        Button.InputBegan:Connect(function(input)
+        trackConnection(Button.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 dragging = true
                 dragStart = input.Position
                 startPos = MainButton.Position
-                input.Changed:Connect(function()
+                trackConnection(input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         dragging = false
                     end
-                end)
+                end))
             end
-        end)
+        end))
 
-        game:GetService("UserInputService").InputChanged:Connect(function(input)
+        trackConnection(game:GetService("UserInputService").InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 update(input)
             end
@@ -1271,7 +1317,7 @@ function ZeroImpact:Window(GuiConfig)
     local originalSize = DropShadowHolder.Size
     local originalPos  = DropShadowHolder.Position
 
-    FullScreen.Activated:Connect(function()
+    trackConnection(FullScreen.Activated:Connect(function()
         CircleClick(FullScreen, Mouse.X, Mouse.Y)
         isFullscreen = not isFullscreen
 
@@ -1290,7 +1336,7 @@ function ZeroImpact:Window(GuiConfig)
                 Position = originalPos,
             }):Play()
         end
-    end)
+    end))
 
     local MoreBlur = Instance.new("Frame");
     local DropShadowHolder1 = Instance.new("Frame");
@@ -1363,14 +1409,14 @@ function ZeroImpact:Window(GuiConfig)
     DropdownSelect.ClipsDescendants = true
     DropdownSelect.Parent = MoreBlur
 
-    ConnectButton.Activated:Connect(function()
+    trackConnection(ConnectButton.Activated:Connect(function()
         if MoreBlur.Visible then
             TweenService:Create(MoreBlur, TweenInfo.new(0.3), { BackgroundTransparency = 0.999 }):Play()
             TweenService:Create(DropdownSelect, TweenInfo.new(0.3), { Position = UDim2.new(1, 172, 0.5, 0) }):Play()
             task.wait(0.3)
             MoreBlur.Visible = false
         end
-    end)
+    end))
     UICorner36.CornerRadius = UDim.new(0, 3)
     UICorner36.Parent = DropdownSelect
 
@@ -1781,10 +1827,12 @@ function ZeroImpact:Window(GuiConfig)
 
             local mySectionData
 
-            local function UpdateSizeSection(instant)
+            -- [OPTIMIZATION: Throttled/Debounced Layout Recalculation for Sections]
+            local sizeUpdatePending = false
+            local function runUpdateSizeSection(instant)
                 if OpenSection or (mySectionData and mySectionData.ForceOpen) then
                     local SectionSizeYWitdh = 38
-                    for _, v in SectionAdd:GetChildren() do
+                    for _, v in ipairs(SectionAdd:GetChildren()) do
                         if not v:IsA("UIListLayout") and not v:IsA("UICorner") and v.Visible then
                             SectionSizeYWitdh = SectionSizeYWitdh + v.Size.Y.Offset + 3
                         end
@@ -1838,6 +1886,21 @@ function ZeroImpact:Window(GuiConfig)
                             end
                         end)
                     end
+                end
+            end
+
+            local function UpdateSizeSection(instant)
+                if instant then
+                    sizeUpdatePending = false
+                    runUpdateSizeSection(true)
+                else
+                    if sizeUpdatePending then return end
+                    sizeUpdatePending = true
+                    task.defer(function()
+                        if not sizeUpdatePending then return end
+                        sizeUpdatePending = false
+                        runUpdateSizeSection(false)
+                    end)
                 end
             end
 
@@ -1917,8 +1980,8 @@ function ZeroImpact:Window(GuiConfig)
                 UpdateScrollSize()
             end
 
-            SectionAdd.ChildAdded:Connect(UpdateSizeSection)
-            SectionAdd.ChildRemoved:Connect(UpdateSizeSection)
+            trackConnection(SectionAdd.ChildAdded:Connect(UpdateSizeSection)
+            trackConnection(SectionAdd.ChildRemoved:Connect(UpdateSizeSection)
 
             local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
             if layout then
@@ -2669,15 +2732,21 @@ function ZeroImpact:Window(GuiConfig)
                     end
                     return Result
                 end
-                function SliderFunc:Set(Value)
+                function SliderFunc:Set(Value, ignoreAnim)
                     Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
                     SliderFunc.Value = Value
                     TextBox.Text = tostring(Value)
-                    TweenService:Create(
-                        SliderDraggable,
-                        TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                        { Size = UDim2.fromScale((Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1) }
-                    ):Play()
+                    
+                    local targetScale = (Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min)
+                    if ignoreAnim then
+                        SliderDraggable.Size = UDim2.fromScale(targetScale, 1)
+                    else
+                        TweenService:Create(
+                            SliderDraggable,
+                            TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            { Size = UDim2.fromScale(targetScale, 1) }
+                        ):Play()
+                    end
 
                     SliderConfig.Callback(Value)
                     ConfigData[configKey] = Value
@@ -2713,7 +2782,7 @@ function ZeroImpact:Window(GuiConfig)
                     end
                 end)
 
-                UserInputService.InputChanged:Connect(function(Input)
+                trackConnection(UserInputService.InputChanged:Connect(function(Input)
                     if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
                         local SizeScale = math.clamp(
                             (Input.Position.X - SliderFrame.AbsolutePosition.X) / SliderFrame.AbsoluteSize.X,
@@ -2733,7 +2802,7 @@ function ZeroImpact:Window(GuiConfig)
                         SliderFunc:Set(SliderConfig.Min)
                     end
                 end)
-                SliderFunc:Set(SliderConfig.Default)
+                SliderFunc:Set(SliderConfig.Default, true)
                 CountItem = CountItem + 1
                 Elements[configKey] = SliderFunc
                 return SliderFunc
@@ -2949,16 +3018,6 @@ function ZeroImpact:Window(GuiConfig)
                 UICorner11.CornerRadius = UDim.new(0, 4)
                 UICorner11.Parent = SelectOptionsFrame
 
-                DropdownButton.Activated:Connect(function()
-                    if not MoreBlur.Visible then
-                        MoreBlur.Visible = true
-                        DropPageLayout:JumpToIndex(SelectOptionsFrame.LayoutOrder)
-                        TweenService:Create(MoreBlur, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
-                        TweenService:Create(DropdownSelect, TweenInfo.new(0.3), { Position = UDim2.new(1, -11, 0.5, 0) })
-                            :Play()
-                    end
-                end)
-
                 OptionSelecting.Font = Enum.Font.GothamBold
                 OptionSelecting.Text = DropdownConfig.Multi and "Select Options" or "Select Option"
                 OptionSelecting.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -3032,10 +3091,161 @@ function ZeroImpact:Window(GuiConfig)
                     ScrollSelect.CanvasSize = UDim2.new(0, 0, 0, UIListLayout4.AbsoluteContentSize.Y)
                 end)
 
-                local DropCount = 0
+                local isOptionsRendered = false
+
+                -- Helper to resolve labels for multi/single selected values
+                local function updateSelectingText()
+                    local texts = {}
+                    local val = DropdownFunc.Value
+                    local valuesToFind = DropdownConfig.Multi and val or { val }
+                    if not DropdownConfig.Multi and val == nil then
+                        valuesToFind = {}
+                    end
+                    
+                    for _, opt in ipairs(DropdownFunc.Options) do
+                        local label, value
+                        if typeof(opt) == "table" and opt.Label and opt.Value ~= nil then
+                            label = tostring(opt.Label)
+                            value = opt.Value
+                        else
+                            label = tostring(opt)
+                            value = opt
+                        end
+                        if table.find(valuesToFind, value) then
+                            table.insert(texts, label)
+                        end
+                    end
+                    
+                    OptionSelecting.Text = (#texts == 0)
+                        and (DropdownConfig.Multi and "Select Options" or "Select Option")
+                        or table.concat(texts, ", ")
+                end
+
+                -- [OPTIMIZATION: Lazy instantiation of Dropdown option GUI elements]
+                local function renderOptions()
+                    if isOptionsRendered then return end
+                    isOptionsRendered = true
+
+                    -- Clear options safely
+                    for _, DropFrame in ipairs(ScrollSelect:GetChildren()) do
+                        if DropFrame.Name == "Option" then
+                            DropFrame:Destroy()
+                        end
+                    end
+
+                    local count = 0
+                    for _, option in ipairs(DropdownFunc.Options) do
+                        local label, value
+                        if typeof(option) == "table" and option.Label and option.Value ~= nil then
+                            label = tostring(option.Label)
+                            value = option.Value
+                        else
+                            label = tostring(option)
+                            value = option
+                        end
+
+                        local Option = Instance.new("Frame")
+                        local OptionButton = Instance.new("TextButton")
+                        local OptionText = Instance.new("TextLabel")
+                        local ChooseFrame = Instance.new("Frame")
+                        local UIStroke15 = Instance.new("UIStroke")
+                        local UICorner38 = Instance.new("UICorner")
+                        local UICorner37 = Instance.new("UICorner")
+
+                        Option.BackgroundTransparency = 1
+                        Option.Size = UDim2.new(1, 0, 0, 30)
+                        Option.Name = "Option"
+                        Option.Parent = ScrollSelect
+
+                        UICorner37.CornerRadius = UDim.new(0, 3)
+                        UICorner37.Parent = Option
+
+                        OptionButton.BackgroundTransparency = 1
+                        OptionButton.Size = UDim2.new(1, 0, 1, 0)
+                        OptionButton.Text = ""
+                        OptionButton.Name = "OptionButton"
+                        OptionButton.Parent = Option
+
+                        OptionText.Font = Enum.Font.GothamBold
+                        OptionText.Text = label
+                        OptionText.TextSize = 13
+                        OptionText.TextColor3 = Color3.fromRGB(230, 230, 230)
+                        OptionText.Position = UDim2.new(0, 8, 0, 8)
+                        OptionText.Size = UDim2.new(1, -100, 0, 13)
+                        OptionText.BackgroundTransparency = 1
+                        OptionText.TextXAlignment = Enum.TextXAlignment.Left
+                        OptionText.Name = "OptionText"
+                        OptionText.Parent = Option
+
+                        Option:SetAttribute("RealValue", value)
+
+                        ChooseFrame.AnchorPoint = Vector2.new(0, 0.5)
+                        ChooseFrame.BackgroundColor3 = GuiConfig.Color
+                        ChooseFrame.Position = UDim2.new(0, 2, 0.5, 0)
+                        ChooseFrame.Size = UDim2.new(0, 0, 0, 0)
+                        ChooseFrame.Name = "ChooseFrame"
+                        ChooseFrame.Parent = Option
+
+                        UIStroke15.Color = GuiConfig.Color
+                        UIStroke15.Thickness = 1.6
+                        UIStroke15.Transparency = 0.999
+                        UIStroke15.Parent = ChooseFrame
+                        UICorner38.Parent = ChooseFrame
+
+                        -- Check visual selection state
+                        local selected = false
+                        if DropdownConfig.Multi then
+                            selected = table.find(DropdownFunc.Value, value) ~= nil
+                        else
+                            selected = DropdownFunc.Value == value
+                        end
+
+                        if selected then
+                            ChooseFrame.Size = UDim2.new(0, 1, 0, 12)
+                            UIStroke15.Transparency = 0
+                            Option.BackgroundTransparency = 0.935
+                        end
+
+                        OptionButton.Activated:Connect(function()
+                            if DropdownConfig.Multi then
+                                if not table.find(DropdownFunc.Value, value) then
+                                    table.insert(DropdownFunc.Value, value)
+                                else
+                                    for idx, v in ipairs(DropdownFunc.Value) do
+                                        if v == value then
+                                            table.remove(DropdownFunc.Value, idx)
+                                            break
+                                        end
+                                    end
+                                end
+                            else
+                                DropdownFunc.Value = value
+                            end
+                            DropdownFunc:Set(DropdownFunc.Value)
+                        end)
+
+                        count = count + 1
+                        -- Micro-yield every 40 items during lazy-render to prevent drop-frame stutter
+                        if count % 40 == 0 then
+                            task.wait()
+                        end
+                    end
+                end
+
+                DropdownButton.Activated:Connect(function()
+                    if not MoreBlur.Visible then
+                        renderOptions()
+                        MoreBlur.Visible = true
+                        DropPageLayout:JumpToIndex(SelectOptionsFrame.LayoutOrder)
+                        TweenService:Create(MoreBlur, TweenInfo.new(0.3), { BackgroundTransparency = 1 }):Play()
+                        TweenService:Create(DropdownSelect, TweenInfo.new(0.3), { Position = UDim2.new(1, -11, 0.5, 0) })
+                            :Play()
+                    end
+                end)
 
                 function DropdownFunc:Clear()
-                    for _, DropFrame in ScrollSelect:GetChildren() do
+                    isOptionsRendered = false
+                    for _, DropFrame in ipairs(ScrollSelect:GetChildren()) do
                         if DropFrame.Name == "Option" then
                             DropFrame:Destroy()
                         end
@@ -3043,84 +3253,14 @@ function ZeroImpact:Window(GuiConfig)
                     DropdownFunc.Value = DropdownConfig.Multi and {} or nil
                     DropdownFunc.Options = {}
                     OptionSelecting.Text = DropdownConfig.Multi and "Select Options" or "Select Option"
-                    DropCount = 0
                 end
 
                 function DropdownFunc:AddOption(option)
-                    local label, value
-                    if typeof(option) == "table" and option.Label and option.Value ~= nil then
-                        label = tostring(option.Label)
-                        value = option.Value
-                    else
-                        label = tostring(option)
-                        value = option
+                    table.insert(DropdownFunc.Options, option)
+                    if isOptionsRendered then
+                        isOptionsRendered = false
+                        renderOptions()
                     end
-
-                    local Option = Instance.new("Frame")
-                    local OptionButton = Instance.new("TextButton")
-                    local OptionText = Instance.new("TextLabel")
-                    local ChooseFrame = Instance.new("Frame")
-                    local UIStroke15 = Instance.new("UIStroke")
-                    local UICorner38 = Instance.new("UICorner")
-                    local UICorner37 = Instance.new("UICorner")
-
-                    Option.BackgroundTransparency = 1
-                    Option.Size = UDim2.new(1, 0, 0, 30)
-                    Option.Name = "Option"
-                    Option.Parent = ScrollSelect
-
-                    UICorner37.CornerRadius = UDim.new(0, 3)
-                    UICorner37.Parent = Option
-
-                    OptionButton.BackgroundTransparency = 1
-                    OptionButton.Size = UDim2.new(1, 0, 1, 0)
-                    OptionButton.Text = ""
-                    OptionButton.Name = "OptionButton"
-                    OptionButton.Parent = Option
-
-                    OptionText.Font = Enum.Font.GothamBold
-                    OptionText.Text = label
-                    OptionText.TextSize = 13
-                    OptionText.TextColor3 = Color3.fromRGB(230, 230, 230)
-                    OptionText.Position = UDim2.new(0, 8, 0, 8)
-                    OptionText.Size = UDim2.new(1, -100, 0, 13)
-                    OptionText.BackgroundTransparency = 1
-                    OptionText.TextXAlignment = Enum.TextXAlignment.Left
-                    OptionText.Name = "OptionText"
-                    OptionText.Parent = Option
-
-                    Option:SetAttribute("RealValue", value)
-
-                    ChooseFrame.AnchorPoint = Vector2.new(0, 0.5)
-                    ChooseFrame.BackgroundColor3 = GuiConfig.Color
-                    ChooseFrame.Position = UDim2.new(0, 2, 0.5, 0)
-                    ChooseFrame.Size = UDim2.new(0, 0, 0, 0)
-                    ChooseFrame.Name = "ChooseFrame"
-                    ChooseFrame.Parent = Option
-
-                    UIStroke15.Color = GuiConfig.Color
-                    UIStroke15.Thickness = 1.6
-                    UIStroke15.Transparency = 0.999
-                    UIStroke15.Parent = ChooseFrame
-                    UICorner38.Parent = ChooseFrame
-
-                    OptionButton.Activated:Connect(function()
-                        if DropdownConfig.Multi then
-                            if not table.find(DropdownFunc.Value, value) then
-                                table.insert(DropdownFunc.Value, value)
-                            else
-                                for i, v in pairs(DropdownFunc.Value) do
-                                    if v == value then
-                                        table.remove(DropdownFunc.Value, i)
-                                        break
-                                    end
-                                end
-                            end
-                        else
-                            DropdownFunc.Value = value
-                        end
-                        DropdownFunc:Set(DropdownFunc.Value)
-                    end)
                 end
 
                 function DropdownFunc:Set(Value)
@@ -3133,41 +3273,42 @@ function ZeroImpact:Window(GuiConfig)
                     ConfigData[configKey] = DropdownFunc.Value
                     SaveConfig()
 
-                    local texts = {}
-                    for _, Drop in ScrollSelect:GetChildren() do
-                        if Drop.Name == "Option" and Drop:FindFirstChild("OptionText") then
-                            local v = Drop:GetAttribute("RealValue")
-                            local selected = DropdownConfig.Multi and table.find(DropdownFunc.Value, v) or
-                                DropdownFunc.Value == v
+                    updateSelectingText()
 
-                            if selected then
-                                TweenService:Create(Drop.ChooseFrame, TweenInfo.new(0.2),
-                                    { Size = UDim2.new(0, 1, 0, 12) }):Play()
-                                TweenService:Create(Drop.ChooseFrame.UIStroke, TweenInfo.new(0.2), { Transparency = 0 })
-                                    :Play()
-                                TweenService:Create(Drop, TweenInfo.new(0.2), { BackgroundTransparency = 0.935 }):Play()
-                                table.insert(texts, Drop.OptionText.Text)
-                            else
-                                TweenService:Create(Drop.ChooseFrame, TweenInfo.new(0.1),
-                                    { Size = UDim2.new(0, 0, 0, 0) }):Play()
-                                TweenService:Create(Drop.ChooseFrame.UIStroke, TweenInfo.new(0.1),
-                                    { Transparency = 0.999 }):Play()
-                                TweenService:Create(Drop, TweenInfo.new(0.1), { BackgroundTransparency = 0.999 }):Play()
+                    if isOptionsRendered then
+                        for _, Drop in ipairs(ScrollSelect:GetChildren()) do
+                            if Drop.Name == "Option" and Drop:FindFirstChild("OptionText") then
+                                local v = Drop:GetAttribute("RealValue")
+                                local selected = DropdownConfig.Multi and table.find(DropdownFunc.Value, v) or
+                                    DropdownFunc.Value == v
+
+                                if selected then
+                                    TweenService:Create(Drop.ChooseFrame, TweenInfo.new(0.2),
+                                        { Size = UDim2.new(0, 1, 0, 12) }):Play()
+                                    TweenService:Create(Drop.ChooseFrame.UIStroke, TweenInfo.new(0.2), { Transparency = 0 })
+                                        :Play()
+                                    TweenService:Create(Drop, TweenInfo.new(0.2), { BackgroundTransparency = 0.935 }):Play()
+                                else
+                                    TweenService:Create(Drop.ChooseFrame, TweenInfo.new(0.1),
+                                        { Size = UDim2.new(0, 0, 0, 0) }):Play()
+                                    TweenService:Create(Drop.ChooseFrame.UIStroke, TweenInfo.new(0.1),
+                                        { Transparency = 0.999 }):Play()
+                                    TweenService:Create(Drop, TweenInfo.new(0.1), { BackgroundTransparency = 0.999 }):Play()
+                                end
                             end
                         end
                     end
 
-                    OptionSelecting.Text = (#texts == 0)
-                        and (DropdownConfig.Multi and "Select Options" or "Select Option")
-                        or table.concat(texts, ", ")
-
-                    if DropdownConfig.Callback then
-                        if DropdownConfig.Multi then
-                            DropdownConfig.Callback(DropdownFunc.Value)
-                        else
-                            local str = (DropdownFunc.Value ~= nil) and tostring(DropdownFunc.Value) or ""
-                            DropdownConfig.Callback(str)
-                        end
+                    if typeof(DropdownConfig.Callback) == "function" then
+                        local ok, err = pcall(function()
+                            if DropdownConfig.Multi then
+                                DropdownConfig.Callback(DropdownFunc.Value)
+                            else
+                                local str = (DropdownFunc.Value ~= nil) and tostring(DropdownFunc.Value) or ""
+                                DropdownConfig.Callback(str)
+                            end
+                        end)
+                        if not ok then warn("Dropdown Callback error:", err) end
                     end
                 end
 
@@ -3180,14 +3321,21 @@ function ZeroImpact:Window(GuiConfig)
                 end
 
                 function DropdownFunc:SetValues(newList, selecting)
-                    newList = newList or {}
-                    selecting = selecting or (DropdownConfig.Multi and {} or nil)
-                    DropdownFunc:Clear()
-                    for _, v in ipairs(newList) do
-                        DropdownFunc:AddOption(v)
+                    DropdownFunc.Options = newList or {}
+                    DropdownFunc.Value = selecting or (DropdownConfig.Multi and {} or nil)
+                    isOptionsRendered = false
+                    
+                    for _, DropFrame in ipairs(ScrollSelect:GetChildren()) do
+                        if DropFrame.Name == "Option" then
+                            DropFrame:Destroy()
+                        end
                     end
-                    DropdownFunc.Options = newList
-                    DropdownFunc:Set(selecting)
+
+                    updateSelectingText()
+
+                    if MoreBlur.Visible and DropPageLayout.CurrentPage == DropdownContainer then
+                        renderOptions()
+                    end
                 end
 
                 DropdownFunc:SetValues(DropdownFunc.Options, DropdownFunc.Value)
@@ -3197,7 +3345,6 @@ function ZeroImpact:Window(GuiConfig)
                 Elements[configKey] = DropdownFunc
                 return DropdownFunc
             end
-
             function Items:AddDivider()
                 local Divider = Instance.new("Frame")
                 Divider.Name = "Divider"
