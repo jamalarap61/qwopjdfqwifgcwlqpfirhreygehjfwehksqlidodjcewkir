@@ -1,4 +1,4 @@
---V40
+--V41
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -11,12 +11,6 @@ local getgenv = getgenv or function() return _G end
 
 local HttpService = game:GetService("HttpService")
 local connectionsRegistry = {}
-local function trackConnection(connection)
-    if connection then
-        table.insert(connectionsRegistry, connection)
-    end
-    return connection
-end
 
 
 if not isfolder("ZeroImpact") then
@@ -156,9 +150,9 @@ local RobloxGui = CoreGui:WaitForChild("RobloxGui")
 local currentCamera = workspace.CurrentCamera or workspace:WaitForChild("Camera")
 local viewport = currentCamera and currentCamera.ViewportSize or Vector2.new(1920, 1080)
 if currentCamera then
-    trackConnection(currentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+    table.insert(connectionsRegistry, currentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
         viewport = currentCamera.ViewportSize
-    end)
+    end))
 end
 
 local function isMobileDevice()
@@ -227,12 +221,12 @@ local function MakeDraggable(topbarobject, object, GuiConfig)
             Tween:Play()
         end
 
-        trackConnection(topbarobject.InputBegan:Connect(function(input)
+        table.insert(connectionsRegistry, topbarobject.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 Dragging = true
                 DragStart = input.Position
                 StartPosition = object.Position
-                trackConnection(input.Changed:Connect(function()
+                table.insert(connectionsRegistry, input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         Dragging = false
                     end
@@ -240,17 +234,17 @@ local function MakeDraggable(topbarobject, object, GuiConfig)
             end
         end))
 
-        trackConnection(topbarobject.InputChanged:Connect(function(input)
+        table.insert(connectionsRegistry, topbarobject.InputChanged:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                 DragInput = input
             end
         end))
 
-        trackConnection(UserInputService.InputChanged:Connect(function(input)
+        table.insert(connectionsRegistry, UserInputService.InputChanged:Connect(function(input)
             if input == DragInput and Dragging then
                 UpdatePos(input)
             end
-        end)
+        end))
     end
 
     local function CustomSize(object, GuiConfig)
@@ -295,12 +289,12 @@ local function MakeDraggable(topbarobject, object, GuiConfig)
             Tween:Play()
         end
 
-        trackConnection(changesizeobject.InputBegan:Connect(function(input)
+        table.insert(connectionsRegistry, changesizeobject.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 Dragging = true
                 DragStart = input.Position
                 StartSize = object.Size
-                trackConnection(input.Changed:Connect(function()
+                table.insert(connectionsRegistry, input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         Dragging = false
                     end
@@ -308,17 +302,17 @@ local function MakeDraggable(topbarobject, object, GuiConfig)
             end
         end))
 
-        trackConnection(changesizeobject.InputChanged:Connect(function(input)
+        table.insert(connectionsRegistry, changesizeobject.InputChanged:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
                 DragInput = input
             end
         end))
 
-        trackConnection(UserInputService.InputChanged:Connect(function(input)
+        table.insert(connectionsRegistry, UserInputService.InputChanged:Connect(function(input)
             if input == DragInput and Dragging then
                 UpdateSize(input)
             end
-        end)
+        end))
     end
 
     CustomSize(object, GuiConfig)
@@ -584,7 +578,7 @@ function ZeroImpact:MakeNotify(NotifyConfig)
             NotifyFrame:Destroy()
         end
 
-        trackConnection(Close.Activated:Connect(function()
+        table.insert(connectionsRegistry, Close.Activated:Connect(function()
             NotifyFunction:Close()
         end))
         TweenService:Create(
@@ -910,76 +904,76 @@ function ZeroImpact:Window(GuiConfig)
     end)
 
     local searchDebounceThread = nil
-    trackConnection(SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
+    table.insert(connectionsRegistry, SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
         if searchDebounceThread then
             task.cancel(searchDebounceThread)
         end
         searchDebounceThread = task.delay(0.3, function()
             searchDebounceThread = nil
             local query = SearchInput.Text:lower():gsub("%s+", "")
-        
-        if query == "" then
+            
+            if query == "" then
+                for _, tabData in ipairs(SearchableItems) do
+                    tabData.TabFrame.Visible = true
+                    for _, sectionData in ipairs(tabData.Sections) do
+                        sectionData.SectionFrame.Visible = true
+                        sectionData.ForceOpen = false
+                        for _, itemData in ipairs(sectionData.Items) do
+                            itemData.Frame.Visible = true
+                        end
+                        sectionData.UpdateSize(true)
+                    end
+                    tabData.UpdateScroll()
+                end
+                UpdateSize1()
+                return
+            end
+            
             for _, tabData in ipairs(SearchableItems) do
-                tabData.TabFrame.Visible = true
+                local cleanTabName = tabData.TabName:lower():gsub("%s+", "")
+                local tabMatches = cleanTabName:find(query) ~= nil
+                local anySectionMatches = false
+                
                 for _, sectionData in ipairs(tabData.Sections) do
-                    sectionData.SectionFrame.Visible = true
-                    sectionData.ForceOpen = false
+                    local cleanSectionTitle = sectionData.SectionTitle:lower():gsub("%s+", "")
+                    local sectionMatches = cleanSectionTitle:find(query) ~= nil
+                    local anyItemMatches = false
+                    
                     for _, itemData in ipairs(sectionData.Items) do
-                        itemData.Frame.Visible = true
+                        local cleanItemTitle = itemData.Title:lower():gsub("%s+", "")
+                        local itemMatches = cleanItemTitle:find(query) ~= nil
+                        
+                        if itemMatches or sectionMatches or tabMatches then
+                            itemData.Frame.Visible = true
+                            anyItemMatches = true
+                        else
+                            itemData.Frame.Visible = false
+                        end
+                    end
+                    
+                    if anyItemMatches or sectionMatches or tabMatches then
+                        sectionData.SectionFrame.Visible = true
+                        anySectionMatches = true
+                        if anyItemMatches then
+                            sectionData.ForceOpen = true
+                        else
+                            sectionData.ForceOpen = false
+                        end
+                    else
+                        sectionData.SectionFrame.Visible = false
+                        sectionData.ForceOpen = false
                     end
                     sectionData.UpdateSize(true)
+                end
+                
+                if tabMatches or anySectionMatches then
+                    tabData.TabFrame.Visible = true
+                else
+                    tabData.TabFrame.Visible = false
                 end
                 tabData.UpdateScroll()
             end
             UpdateSize1()
-            return
-        end
-        
-        for _, tabData in ipairs(SearchableItems) do
-            local cleanTabName = tabData.TabName:lower():gsub("%s+", "")
-            local tabMatches = cleanTabName:find(query) ~= nil
-            local anySectionMatches = false
-            
-            for _, sectionData in ipairs(tabData.Sections) do
-                local cleanSectionTitle = sectionData.SectionTitle:lower():gsub("%s+", "")
-                local sectionMatches = cleanSectionTitle:find(query) ~= nil
-                local anyItemMatches = false
-                
-                for _, itemData in ipairs(sectionData.Items) do
-                    local cleanItemTitle = itemData.Title:lower():gsub("%s+", "")
-                    local itemMatches = cleanItemTitle:find(query) ~= nil
-                    
-                    if itemMatches or sectionMatches or tabMatches then
-                        itemData.Frame.Visible = true
-                        anyItemMatches = true
-                    else
-                        itemData.Frame.Visible = false
-                    end
-                end
-                
-                if anyItemMatches or sectionMatches or tabMatches then
-                    sectionData.SectionFrame.Visible = true
-                    anySectionMatches = true
-                    if anyItemMatches then
-                        sectionData.ForceOpen = true
-                    else
-                        sectionData.ForceOpen = false
-                    end
-                else
-                    sectionData.SectionFrame.Visible = false
-                    sectionData.ForceOpen = false
-                end
-                sectionData.UpdateSize(true)
-            end
-            
-            if tabMatches or anySectionMatches then
-                tabData.TabFrame.Visible = true
-            else
-                tabData.TabFrame.Visible = false
-            end
-            tabData.UpdateScroll()
-        end
-        UpdateSize1()
         end)
     end))
 
@@ -1103,8 +1097,8 @@ function ZeroImpact:Window(GuiConfig)
             ScrollTab.CanvasSize = UDim2.new(0, 0, 0, OffsetY)
         end)
     end
-    trackConnection(ScrollTab.ChildAdded:Connect(UpdateSize1)
-    trackConnection(ScrollTab.ChildRemoved:Connect(UpdateSize1)
+    table.insert(connectionsRegistry, ScrollTab.ChildAdded:Connect(UpdateSize1))
+    table.insert(connectionsRegistry, ScrollTab.ChildRemoved:Connect(UpdateSize1))
 
     function GuiFunc:DestroyGui()
         -- [OPTIMIZATION: Memory Leak Prevention - Disconnect all active connections on destroy]
@@ -1123,11 +1117,11 @@ function ZeroImpact:Window(GuiConfig)
         end
     end
 
-    trackConnection(Min.Activated:Connect(function()
+    table.insert(connectionsRegistry, Min.Activated:Connect(function()
         CircleClick(Min, Mouse.X, Mouse.Y)
         DropShadowHolder.Visible = false
     end))
-    trackConnection(Close.Activated:Connect(function()
+    table.insert(connectionsRegistry, Close.Activated:Connect(function()
         CircleClick(Close, Mouse.X, Mouse.Y)
 
         local Overlay = Instance.new("Frame")
@@ -1237,14 +1231,14 @@ function ZeroImpact:Window(GuiConfig)
     end))
 
     local ToggleKey = Enum.KeyCode.F3
-    trackConnection(UserInputService.InputBegan:Connect(function(input, gpe)
+    table.insert(connectionsRegistry, UserInputService.InputBegan:Connect(function(input, gpe)
         if gpe then return end
         if input.KeyCode == ToggleKey then
             if DropShadowHolder then
                 DropShadowHolder.Visible = not DropShadowHolder.Visible
             end
         end
-    end)
+    end))
 
     function GuiFunc:ToggleUI()
         local ScreenGui = Instance.new("ScreenGui")
@@ -1289,12 +1283,12 @@ function ZeroImpact:Window(GuiConfig)
             )
         end
 
-        trackConnection(Button.InputBegan:Connect(function(input)
+        table.insert(connectionsRegistry, Button.InputBegan:Connect(function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                 dragging = true
                 dragStart = input.Position
                 startPos = MainButton.Position
-                trackConnection(input.Changed:Connect(function()
+                table.insert(connectionsRegistry, input.Changed:Connect(function()
                     if input.UserInputState == Enum.UserInputState.End then
                         dragging = false
                     end
@@ -1302,11 +1296,11 @@ function ZeroImpact:Window(GuiConfig)
             end
         end))
 
-        trackConnection(game:GetService("UserInputService").InputChanged:Connect(function(input)
+        table.insert(connectionsRegistry, game:GetService("UserInputService").InputChanged:Connect(function(input)
             if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
                 update(input)
             end
-        end)
+        end))
     end
 
     GuiFunc:ToggleUI()
@@ -1317,7 +1311,7 @@ function ZeroImpact:Window(GuiConfig)
     local originalSize = DropShadowHolder.Size
     local originalPos  = DropShadowHolder.Position
 
-    trackConnection(FullScreen.Activated:Connect(function()
+    table.insert(connectionsRegistry, FullScreen.Activated:Connect(function()
         CircleClick(FullScreen, Mouse.X, Mouse.Y)
         isFullscreen = not isFullscreen
 
@@ -1409,7 +1403,7 @@ function ZeroImpact:Window(GuiConfig)
     DropdownSelect.ClipsDescendants = true
     DropdownSelect.Parent = MoreBlur
 
-    trackConnection(ConnectButton.Activated:Connect(function()
+    table.insert(connectionsRegistry, ConnectButton.Activated:Connect(function()
         if MoreBlur.Visible then
             TweenService:Create(MoreBlur, TweenInfo.new(0.3), { BackgroundTransparency = 0.999 }):Play()
             TweenService:Create(DropdownSelect, TweenInfo.new(0.3), { Position = UDim2.new(1, 172, 0.5, 0) }):Play()
@@ -1980,8 +1974,8 @@ function ZeroImpact:Window(GuiConfig)
                 UpdateScrollSize()
             end
 
-            trackConnection(SectionAdd.ChildAdded:Connect(UpdateSizeSection)
-            trackConnection(SectionAdd.ChildRemoved:Connect(UpdateSizeSection)
+            table.insert(connectionsRegistry, SectionAdd.ChildAdded:Connect(UpdateSizeSection))
+            table.insert(connectionsRegistry, SectionAdd.ChildRemoved:Connect(UpdateSizeSection))
 
             local layout = ScrolLayers:FindFirstChildOfClass("UIListLayout")
             if layout then
@@ -2782,7 +2776,7 @@ function ZeroImpact:Window(GuiConfig)
                     end
                 end)
 
-                trackConnection(UserInputService.InputChanged:Connect(function(Input)
+                UserInputService.InputChanged:Connect(function(Input)
                     if Dragging and (Input.UserInputType == Enum.UserInputType.MouseMovement or Input.UserInputType == Enum.UserInputType.Touch) then
                         local SizeScale = math.clamp(
                             (Input.Position.X - SliderFrame.AbsolutePosition.X) / SliderFrame.AbsoluteSize.X,
