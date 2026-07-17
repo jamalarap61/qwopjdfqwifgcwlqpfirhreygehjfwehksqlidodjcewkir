@@ -1,4 +1,4 @@
---V42
+--V43
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -3096,33 +3096,57 @@ function ZeroImpact:Window(GuiConfig)
 
                 local isOptionsRendered = false
 
-                -- Helper to resolve labels for multi/single selected values
-                local function updateSelectingText()
-                    local texts = {}
-                    local val = DropdownFunc.Value
-                    local valuesToFind = DropdownConfig.Multi and val or { val }
-                    if not DropdownConfig.Multi and val == nil then
-                        valuesToFind = {}
-                    end
-                    
-                    for _, opt in ipairs(DropdownFunc.Options) do
-                        local label, value
-                        if typeof(opt) == "table" and opt.Label and opt.Value ~= nil then
-                            label = tostring(opt.Label)
-                            value = opt.Value
-                        else
-                            label = tostring(opt)
-                            value = opt
-                        end
-                        if table.find(valuesToFind, value) then
-                            table.insert(texts, label)
-                        end
-                    end
-                    
-                    OptionSelecting.Text = (#texts == 0)
-                        and (DropdownConfig.Multi and "Select Options" or "Select Option")
-                        or table.concat(texts, ", ")
+ -- Helper to resolve labels for multi/single selected values
+local function updateSelectingText()
+    local texts = {}
+    local val = DropdownFunc.Value
+    
+    -- 🔥 FIX BUG INTERNAL UI (Paling Aman):
+    -- Kita paksa valuesToFind agar dipastikan SELALU berupa Table, gak peduli config lu kosong/nil/string.
+    local valuesToFind = {}
+    if DropdownConfig.Multi then
+        if type(val) == "table" then
+            -- Jika tipenya array murni dari config [1]="Item", atau bentuk dictionary
+            local isDict = false
+            for k, _ in pairs(val) do
+                if type(k) == "string" then isDict = true break end
+            end
+            
+            if isDict then
+                -- Jika tak sengaja berubah jadi dictionary akibat callback GAG2, ubah balik ke array sementara
+                for itemName, enabled in pairs(val) do
+                    if enabled then table.insert(valuesToFind, itemName) end
                 end
+            else
+                valuesToFind = val
+            end
+        else
+            -- Jika val ternyata nil atau string rusak akibat proses load, amankan jadi table kosong
+            valuesToFind = (type(val) == "string" and val ~= "") and { val } or {}
+        end
+    else
+        valuesToFind = (val ~= nil) and { val } or {}
+    end
+    
+    for _, opt in ipairs(DropdownFunc.Options) do
+        local label, value
+        if typeof(opt) == "table" and opt.Label and opt.Value ~= nil then
+            label = tostring(opt.Label)
+            value = opt.Value
+        else
+            label = tostring(opt)
+            value = opt
+        end
+        -- Di sini dijamin aman 100% dari crash karena valuesToFind sudah dipastikan berwujud Table
+        if table.find(valuesToFind, value) then
+            table.insert(texts, label)
+        end
+    end
+    
+    OptionSelecting.Text = (#texts == 0)
+        and (DropdownConfig.Multi and "Select Options" or "Select Option")
+        or table.concat(texts, ", ")
+end
 
                 -- [OPTIMIZATION: Lazy instantiation of Dropdown option GUI elements]
                 local function renderOptions()
