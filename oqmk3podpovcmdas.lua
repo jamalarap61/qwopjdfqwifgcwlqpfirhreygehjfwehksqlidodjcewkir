@@ -1,4 +1,4 @@
---V43
+--V44
 
 local isfolder = isfolder or function() return false end
 local makefolder = makefolder or function() end
@@ -684,6 +684,20 @@ function ZeroImpact:Window(GuiConfig)
     DropShadowHolder.Name = "DropShadowHolder"
     DropShadowHolder.Parent = ZeroImpactOnTop
 
+    local startVisible = true
+    if GuiConfig.ShowUI == false then
+        startVisible = false
+    else
+        for k, v in pairs(ConfigData) do
+            local lowerKey = string.lower(k)
+            if (lowerKey == "toggle_show ui" or lowerKey == "toggle_showui") and v == false then
+                startVisible = false
+                break
+            end
+        end
+    end
+    DropShadowHolder.Visible = startVisible
+
     DropShadowHolder.Position = UDim2.new(0, (ZeroImpactOnTop.AbsoluteSize.X // 2 - DropShadowHolder.Size.X.Offset // 2), 0,
         (ZeroImpactOnTop.AbsoluteSize.Y // 2 - DropShadowHolder.Size.Y.Offset // 2))
     DropShadow.Image = "rbxassetid://6015897843"
@@ -1114,6 +1128,12 @@ function ZeroImpact:Window(GuiConfig)
         end
         if RobloxGui:FindFirstChild(toggleName) then
             RobloxGui[toggleName]:Destroy()
+        end
+    end
+
+    function GuiFunc:SetVisible(state)
+        if DropShadowHolder then
+            DropShadowHolder.Visible = state
         end
     end
 
@@ -3455,6 +3475,10 @@ end
         GuiFunc:ToggleUI()
     end
 
+    function Tabs:SetVisible(state)
+        GuiFunc:SetVisible(state)
+    end
+
     -- Auto-create the Favorited Tab
     local FavoritedSections = Tabs:AddTab({ Name = " | Favorited", Icon = "star" })
     
@@ -3477,7 +3501,7 @@ end
         PlaceholderLabel.Font = Enum.Font.Gotham
         PlaceholderLabel.TextSize = 12
         PlaceholderLabel.TextColor3 = Color3.fromRGB(150, 170, 190)
-        PlaceholderLabel.Text = "Belum ada section favorit.\n\nKlik ikon bintang pada section mana pun untuk menambahkannya ke sini!"
+        PlaceholderLabel.Text = "No favorite sections yet.\n\nClick the star icon on any section to add it here!"
         PlaceholderLabel.TextWrapped = true
         PlaceholderLabel.Parent = PlaceholderFrame
     end
